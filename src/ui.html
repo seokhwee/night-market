@@ -422,10 +422,14 @@ function animateTokens(){
   S.players.forEach(p=>{if(view[p.id]==null)view[p.id]=p.pos;});
   if(stepper)return;
   const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let movedAny=false;
   stepper=setInterval(()=>{let moving=false;
-    if(S)S.players.forEach(p=>{const v=view[p.id];if(v==null||v===p.pos)return;moving=true;
-      if(reduce){view[p.id]=p.pos;return;}const fwd=(p.pos-v+N)%N;view[p.id]=fwd<=N/2?(v+1)%N:(v+N-1)%N;});
-    renderTokens();if(!moving){clearInterval(stepper);stepper=null;}},reduce?10:120);}
+    if(S)S.players.forEach(p=>{const v=view[p.id];if(v==null||v===p.pos)return;moving=true;movedAny=true;
+      const fwd=(p.pos-v+N)%N,back=(v-p.pos+N)%N;
+      if(reduce||Math.min(fwd,back)>12){view[p.id]=p.pos;return;} // jumps (단속반, 카드 이동) teleport
+      view[p.id]=fwd<=back?(v+1)%N:(v+N-1)%N;});
+    renderTokens();if(!moving){clearInterval(stepper);stepper=null;if(movedAny)setTimeout(render,140);}},reduce?10:140);}
+function isMoving(){return !!(inGame()&&S.players.some(p=>!p.out&&view[p.id]!=null&&view[p.id]!==p.pos));}
 
 /* ---------- center ---------- */
 const IC={
@@ -439,7 +443,7 @@ function chOk(v){const k=Number(v);return Number.isInteger(k)&&k>=0&&k<CH.length
 function amSpectator(){return online()&&inGame()&&myIdx()<0;}
 function topbar(){let chips='';
   if(inGame()){const me=myId();const away=new Set();peers.forEach(pe=>{if(pe.away){if(pe.presence&&pe.presence.host)away.add('@host');else away.add(pe.peer);}});
-    chips=S.players.map((p,i)=>`<div class="pchip${i===S.turn&&S.phase==='play'&&!p.out?' now':''}${p.out?' out':''}${mode!=='local'&&p.id===me?' me':''}" data-pid="${i}">${tokHTML(p)}<span class="pt"><span class="pn">${esc(p.name)}${mode!=='local'&&p.id===me?' (나)':''}${p.skip?' · 쉼':''}${away.has(p.id)&&!p.out?' · 연결 끊김':''}</span><b class="money">${p.out?'파산':p.money.toLocaleString()+UNIT}</b></span></div>`).join('');}
+    chips=S.players.map((p,i)=>`<div class="pchip${i===S.turn&&S.phase==='play'&&!p.out?' now':''}${p.out?' out':''}${mode!=='local'&&p.id===me?' me':''}" data-pid="${i}">${tokHTML(p)}<span class="pt"><span class="pn">${esc(p.name)}${mode!=='local'&&p.id===me?' (나)':''}${p.skip?' · 쉼':''}${away.has(p.id)&&!p.out?' · 연결 끊김':''}</span><b class="money">${p.out?'파산':((isMoving()&&prevSnap&&prevSnap.money[i]!=null)?prevSnap.money[i]:p.money).toLocaleString()+UNIT}</b></span></div>`).join('');}
   const rb=online()&&S&&S.phase==='play'?`<button class="ib" data-act="reactmenu" aria-label="반응 보내기">${IC.smile}</button>`:'';
   const sp=inGame()?spectators():[];
   if(sp.length||amSpectator())chips+=`<button class="pchip spec${amSpectator()?' mespec':''}" data-act="specs" title="${esc(sp.map(x=>x.name).join(', '))}">${IC.eye}<span class="pt"><span class="pn">${amSpectator()?'나는 관전 중':'구경 중'}</span><b class="money">${sp.length}명</b></span></button>`;
@@ -500,9 +504,9 @@ function renderCenter(){
       <div class="acts">${isHostish?`<button class="btn" data-act="again">한 판 더</button>`:''}<button class="ghost" data-act="leave">나가기</button></div>`,true);return;}
   const cur=S.players[S.turn],mine=canAct();
   if(S.seq!==lastSeq){if(lastSeq!==null&&S.dice[0])rollAt=Date.now();lastSeq=S.seq;}
-  const rolling=Date.now()-rollAt<600;
+  const rolling=Date.now()-rollAt<600;const walking=isMoving();
   let acts='';
-  if(mine){const dis=pending?'disabled':'';
+  if(mine&&!walking){const dis=pending?'disabled':'';
     if(S.stage==='roll')acts=`<button class="btn${S.dbl?' dbl':''}" data-act="roll" ${dis}>${cur.skip?'이번 턴 쉬기':S.dbl?'더블! 한 번 더 굴리기':'주사위 굴리기'}</button>`;
     else if(S.stage==='buy'){const t=T[cur.pos];acts=`<button class="btn" data-act="buy" ${dis}>${t.n} 사기 · ${t.p}${UNIT}</button><button class="ghost" data-act="pass" ${dis}>지나가기</button>`;}
     else if(S.stage==='take'){const t=T[cur.pos],o=S.players[S.owners[cur.pos]];acts=`<button class="btn" data-act="take" ${dis}>${esc(o?o.name:'')}의 ${t.n} 인수 · ${takePrice(cur.pos,S)}${UNIT}</button><button class="ghost" data-act="pass" ${dis}>지나가기</button>`;}
@@ -516,9 +520,9 @@ function renderCenter(){
     <div class="turnline">${tokHTML(cur,'lg')}<span class="who"><b>${esc(cur.name)} 차례</b><small>${CH[cur.c].food} ${CH[cur.c].n}</small></span> ${youTag}${online()?'<span class="tsec" id="tsec"></span>':''}</div>
     ${online()?'<div class="timer" id="timer"><i></i></div>':''}
     <div class="dicerow${S.dice[0]&&S.dice[0]===S.dice[1]?' isdbl':''}">${dieHTML(S.dice[0],rolling)}${dieHTML(S.dice[1],rolling)}<span class="total">${S.dice[0]?S.dice[0]+S.dice[1]:''}</span></div>
-    ${S.card?`<div class="cardbox"><small>뽑기 카드</small>${esc(S.card)}</div>`:''}
-    <p class="msg">${esc(S.msg)}</p>
-    ${acts?`<div class="acts">${acts}</div>`:`<p class="wait">${esc(cur.name)}님이 ${S.stage==='sell'?`돈이 모자라 팔 가게를 고르는 중… (부족 ${owed(S)}${UNIT})`:'하는 중…'}</p>`}`,true);
+    ${S.card&&!walking?`<div class="cardbox"><small>뽑기 카드</small>${esc(S.card)}</div>`:''}
+    <p class="msg">${walking?`${esc(cur.name)}님이 이동하는 중…`:esc(S.msg)}</p>
+    ${walking?'':acts?`<div class="acts">${acts}</div>`:`<p class="wait">${esc(cur.name)}님이 ${S.stage==='sell'?`돈이 모자라 팔 가게를 고르는 중… (부족 ${owed(S)}${UNIT})`:'하는 중…'}</p>`}`,true);
   tickTimer();
 }
 
@@ -727,7 +731,8 @@ function playTx(){
   if(reduce)return;
   requestAnimationFrame(()=>fresh.forEach((t,k)=>flyMoney(t,k*260)));}
 
-function render(){renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();detect();ceremony();playTx();}
+function render(){renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();
+  if(!isMoving()){detect();playTx();}ceremony();}
 
 /* ---------- networking ---------- */
 function makeWsRoom(){
@@ -822,6 +827,7 @@ back.addEventListener('click',closeSheet);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetKind)closeSheet();});
 document.addEventListener('click',e=>{
   const tl=e.target.closest('[data-tile]');if(tl){const j=+tl.dataset.tile;
+    if(isMoving()){openSheet('tile:'+j);return;}
     if(canAct()&&!pending&&S.stage==='sell'&&S.owners[j]===S.turn){act('sell:'+j);return;}
     if(canAct()&&!pending&&((S.stage==='expandAny'&&expandable(S,S.turn).includes(j))||(S.stage==='expand'&&S.exTarget===j))){act('ex:'+j);return;}
     openSheet('tile:'+j);return;}
