@@ -74,6 +74,12 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .exchip{appearance:none;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:10px;padding:6px 10px;min-height:40px;background:var(--g);color:#fff;font-weight:700;cursor:pointer;font-size:clamp(12px,1.9cqmin,14px);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
 .exchip small{font-weight:600;opacity:.85}
 .exchip:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.tile.sellable{outline:3px solid #ff6b6b;outline-offset:-2px;z-index:3;animation:sellp .8s ease-in-out infinite alternate}
+@keyframes sellp{to{outline-color:rgba(255,107,107,.25)}}
+.sellhead{width:100%;text-align:center;font-size:clamp(12px,2cqmin,15px);color:#ffb4a8}
+.sellhead b{color:#ff8a8a;font-size:1.15em}
+.sellchip small{color:#b9f5c9}
+.ghost.danger{border-color:#8a3a3a;color:#ffb4a8}
 .btn.ex{background:#ffd84d;color:#2b1d00}
 /* order ceremony */
 .ord{background:rgba(12,16,38,.96);border:2px solid var(--lantern);border-radius:20px;padding:clamp(10px,2.2cqmin,22px) clamp(14px,3cqmin,30px);display:flex;flex-direction:column;align-items:center;gap:clamp(6px,1.2cqmin,12px);box-shadow:0 0 50px rgba(255,162,76,.3);pointer-events:auto;max-height:100%;overflow:auto;animation:ordin .3s ease-out}
@@ -343,6 +349,7 @@ const WORDS=['나이스!','살려줘','빨리 해~','ㅋㅋㅋ','봐주세요','
 /* ---------- app state ---------- */
 let room=null,roomState='wait',connected=false,myPeer=null,peers=[];
 let mode='menu',S=null,joinCode=null,seenHost=false,hostGone=false;
+let confirmGiveup=false;
 let reqN=0,pending=null,confirmEnd=false,confirmLeave=false,localCount=3;
 let myCh=Math.min(7,Math.max(0,parseInt(load('nm-ch','0'),10)||0));const localChars=[0,1,2,3,4,5];const localNames=[];
 const lastReq={},goneAt={},view={},seenReact={};
@@ -388,10 +395,11 @@ const tiles=T.map((t,i)=>{const el=document.createElement('button');el.type='but
 
 function renderBoard(){
   const st=sheetKind&&sheetKind.startsWith('tile:')?T[+sheetKind.slice(5)]:null;const hg=st&&st.k==='s'?st.g:(hlGroup!=null?hlGroup:null);
+  const sells=(inGame()&&S.stage==='sell')?new Set(sellable(S,S.turn)):null;
   const exs=(canAct()&&S.stage==='expandAny')?new Set(expandable(S,S.turn)):(canAct()&&S.stage==='expand'?new Set([S.exTarget]):null);
   tiles.forEach((el,i)=>{const lvEl=el.querySelector('.lvl');const L=inGame()?lvOf(S,i):0;
     if(lvEl){lvEl.hidden=!L;const txt=L>=CFG.exMax?'명물':'★'.repeat(L);if(lvEl.textContent!==txt)lvEl.textContent=txt;lvEl.classList.toggle('star3',L>=CFG.exMax);}
-    el.classList.toggle('exable',!!exs&&exs.has(i));
+    el.classList.toggle('exable',!!exs&&exs.has(i));el.classList.toggle('sellable',!!sells&&sells.has(i));
     el.classList.toggle('hl',hg!=null&&T[i].k==='s'&&T[i].g===hg);el.classList.toggle('dim',hg!=null&&!(T[i].k==='s'&&T[i].g===hg));const t=T[i];const o=inGame()?S.owners[i]:-1;const fl=el.children[el.children.length-2];const pr=el.querySelector('.pr');
     if(o>=0){const p=S.players[o];el.classList.add('owned');el.style.setProperty('--own',PC[p.c]);fl.hidden=false;if(fl.dataset.c!==String(p.c)){fl.innerHTML=CH[p.c].svg;fl.dataset.c=p.c;}if(pr)pr.textContent='이용료 '+rent(S,i);}
     else{el.classList.remove('owned');fl.hidden=true;if(pr&&(t.k==='s'||t.k==='park'))pr.textContent=t.p+UNIT;}});
@@ -493,6 +501,8 @@ function renderCenter(){
     else if(S.stage==='buy'){const t=T[cur.pos];acts=`<button class="btn" data-act="buy" ${dis}>${t.n} 사기 · ${t.p}${UNIT}</button><button class="ghost" data-act="pass" ${dis}>지나가기</button>`;}
     else if(S.stage==='take'){const t=T[cur.pos],o=S.players[S.owners[cur.pos]];acts=`<button class="btn" data-act="take" ${dis}>${esc(o?o.name:'')}의 ${t.n} 인수 · ${takePrice(cur.pos,S)}${UNIT}</button><button class="ghost" data-act="pass" ${dis}>지나가기</button>`;}
     else if(S.stage==='expand'){const j=S.exTarget,t=T[j],L=lvOf(S,j);acts=`<button class="btn ex" data-act="ex" data-pos="${j}" ${dis}>${t.n} 확장 ${L}→${L+1}단계${L+1>=CFG.exMax?' (명물)':''} · ${exCost(j)}${UNIT}</button><button class="ghost" data-act="pass" ${dis}>안 할래요</button>`;}
+    else if(S.stage==='sell'){const js=sellable(S,S.turn).sort((a,b)=>sellValue(S,a)-sellValue(S,b));
+      acts=`<div class="sellhead">부족한 돈 <b>${owed(S).toLocaleString()}${UNIT}</b> · 팔 가게를 골라요 (반값)</div><div class="exlist">${js.map(j=>`<button class="exchip sellchip" style="--g:${T[j].k==='s'?G[T[j].g]:'#455a64'}" data-act="sell" data-pos="${j}" ${dis}>${T[j].n}${lvOf(S,j)?' '+'★'.repeat(lvOf(S,j)):''}<small>+${sellValue(S,j)}</small></button>`).join('')}</div><button class="ghost danger" data-act="giveup" ${dis}>${confirmGiveup?'정말 파산할까요? 한 번 더 누르기':'파산하기'}</button>`;}
     else if(S.stage==='expandAny'){const js=expandable(S,S.turn).sort((a,b)=>b-a);acts=`<div class="exlist">${js.map(j=>`<button class="exchip" style="--g:${G[T[j].g]}" data-act="ex" data-pos="${j}" ${dis}>${T[j].n}<small>${lvOf(S,j)}→${lvOf(S,j)+1} · ${exCost(j)}</small></button>`).join('')}</div><button class="ghost" data-act="pass" ${dis}>안 할래요</button>`;}
     else acts=`<button class="btn pink" data-act="end" ${dis}>턴 넘기기</button>`;}
   const youTag=(mode!=='local'&&mine?'<span class="pill">내 차례</span>':'')+(amSpectator()?'<span class="pill specp">관전 중</span>':'')+(S.dbl&&S.phase==='play'?`<span class="pill dblp">더블 ×${S.dbl}</span>`:'');
@@ -502,7 +512,7 @@ function renderCenter(){
     <div class="dicerow${S.dice[0]&&S.dice[0]===S.dice[1]?' isdbl':''}">${dieHTML(S.dice[0],rolling)}${dieHTML(S.dice[1],rolling)}<span class="total">${S.dice[0]?S.dice[0]+S.dice[1]:''}</span></div>
     ${S.card?`<div class="cardbox"><small>뽑기 카드</small>${esc(S.card)}</div>`:''}
     <p class="msg">${esc(S.msg)}</p>
-    ${acts?`<div class="acts">${acts}</div>`:`<p class="wait">${esc(cur.name)}님이 하는 중…</p>`}`,true);
+    ${acts?`<div class="acts">${acts}</div>`:`<p class="wait">${esc(cur.name)}님이 ${S.stage==='sell'?`돈이 모자라 팔 가게를 고르는 중… (부족 ${owed(S)}${UNIT})`:'하는 중…'}</p>`}`,true);
   tickTimer();
 }
 
@@ -518,6 +528,7 @@ function tickTimer(){
 setInterval(tickTimer,250);
 function autoTurn(s){const p=s.players[s.turn];if(!p)return;
   for(let k=0;k<4&&s.phase==='play'&&s.players[s.turn]===p;k++){
+    if(s.stage==='sell')apply(s,'autosell');
     if(s.stage==='roll')apply(s,'roll');
     if(s.phase==='play'&&(s.stage==='buy'||s.stage==='take'||s.stage==='expand'||s.stage==='expandAny'))apply(s,'pass');
     if(s.phase==='play'&&(s.stage==='buy'||s.stage==='take'||s.stage==='expand'||s.stage==='expandAny'))apply(s,'pass');
@@ -539,7 +550,8 @@ function rulesHTML(){return `<div class="panel"><ol class="rules">
     <li><b>사업 확장</b>: 내 노점에 다시 서거나 입구를 지날 때, 노점 하나를 확장할 수 있어요 (단계당 가게값의 절반). 이용료가 ×1.5 → ×2 → ×2.5로 올라요. <b>3단계 명물 가게</b>는 인수할 수 없어요.</li>
     <li>주차장은 많이 가질수록 이용료가 올라요 (${CFG.parkRent.join(' · ')}).</li>
     <li>주사위 두 개가 같은 눈이면 <b>더블</b>! 한 번 더 굴려요. 더블이 <b>3번 연속</b> 나오면 단속반으로 끌려가 다음 턴을 쉬어요.</li>
-    <li>입구를 지날 때마다 <b>+${CFG.pass}${UNIT}</b>. 돈이 바닥나면 파산이에요.</li>
+    <li>입구를 지날 때마다 <b>+${CFG.pass}${UNIT}</b>.</li>
+    <li><b>돈이 모자라면</b> 가진 가게를 골라 은행에 <b>반값</b>(확장 비용 포함)으로 팔아 메워요. 다 팔아도 모자라면 파산이에요. 남의 차례에 내는 소액은 가장 싼 가게부터 자동으로 팔아요.</li>
     <li>온라인에서는 <b>${TURN_SEC}초</b> 안에 행동하지 않으면 자동으로 진행돼요.</li>
     <li><b>${CFG.rounds}라운드</b>가 끝나면 현금과 가게 값을 합친 자산이 가장 많은 사람이 이겨요.</li>
     <li>칸을 누르면 가격, 이용료, 주인, 같은 세트 칸을 볼 수 있어요. 세트는 칸 색으로 구분돼요.</li></ol></div>`;}
@@ -587,6 +599,7 @@ function tileSheetHTML(i){const t=T[i];const o=inGame()?S.owners[i]:-1;const own
     rows+=`<dt>세트 완성 (${gt.length}개)</dt><dd>${base*2}${UNIT}</dd>`;
     const L=inGame()?lvOf(S,i):0;
     rows+=`<dt>확장 단계</dt><dd>${L>=CFG.exMax?'명물 가게 (최고)':L+' / '+CFG.exMax}</dd><dt>확장 비용</dt><dd>단계당 ${exCost(i)}${UNIT}</dd><dt>이용료 배수</dt><dd>${CFG.exMult.map((m,k)=>k===L?`<b style="color:var(--lantern)">×${m}</b>`:'×'+m).join(' → ')}</dd>`;
+    rows+=`<dt>매각 가격</dt><dd>${sellValue(inGame()?S:{lv:[]},i)}${UNIT}</dd>`;
     rows+=`<dt>인수 가격</dt><dd>${L>=CFG.exMax?'인수 불가':takePrice(i,inGame()?S:null)+UNIT}</dd>`;
     extra=`<div><div class="eyebrow" style="margin-bottom:6px">${GN[t.g]} 세트</div><div class="members">${gt.map(j=>{const oo=inGame()?S.owners[j]:-1;const op=oo>=0?S.players[oo]:null;
       return `<span style="--o:${op?PC[op.c]:'#6b7394'}"><i></i>${T[j].n}${op?' · '+esc(op.name):''}</span>`}).join('')}</div></div>`;}
@@ -631,6 +644,7 @@ function detect(){
     else banner(p,'더블!',S.lastDbl>=2?'한 번 더! 또 나오면 단속':'한 번 더 굴려요','#5ce1ff');}
   cur.lv.forEach((L,j)=>{const a=pv.lv[j]||0;const o=cur.owners[j];if(L>a&&o>=0&&pv.owners[j]===o){const p=S.players[o];
     if(L>=CFG.exMax)banner(p,'명물 가게!',`${T[j].n} · 이제 아무도 인수할 수 없어요`,'#ffd84d');else toast(p,`${T[j].n} 확장 ${'★'.repeat(L)}`);}});
+  cur.owners.forEach((o,j)=>{const a=pv.owners[j];if(o<0&&a>=0&&!cur.out[a]&&S.players[a])toast(S.players[a],`${T[j].n} 매각 💸`);});
   cur.owners.forEach((o,j)=>{const a=pv.owners[j];if(o===a||o<0)return;const t=T[j],p=S.players[o];
     if(a>=0){const f=S.players[a];banner(p,'인수!',`${p.name} ← ${f?f.name:''}의 ${t.n}`,'#ff5d8f');}
     else toast(p,`${t.n} 오픈!`);
@@ -761,6 +775,7 @@ back.addEventListener('click',closeSheet);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetKind)closeSheet();});
 document.addEventListener('click',e=>{
   const tl=e.target.closest('[data-tile]');if(tl){const j=+tl.dataset.tile;
+    if(canAct()&&!pending&&S.stage==='sell'&&S.owners[j]===S.turn){act('sell:'+j);return;}
     if(canAct()&&!pending&&((S.stage==='expandAny'&&expandable(S,S.turn).includes(j))||(S.stage==='expand'&&S.exTarget===j))){act('ex:'+j);return;}
     openSheet('tile:'+j);return;}
   const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const a=b.dataset.act;
@@ -796,6 +811,8 @@ document.addEventListener('click',e=>{
   case 'leaveask':if(!confirmLeave){confirmLeave=true;renderSheet();setTimeout(()=>{if(confirmLeave){confirmLeave=false;renderSheet();}},5000);}else{confirmLeave=false;leave();}break;
   case 'hlset':hlGroup=+b.dataset.g;renderBoard();clearTimeout(hlTimer);hlTimer=setTimeout(()=>{hlGroup=null;renderBoard();},2500);break;
   case 'ex':act('ex:'+b.dataset.pos);break;
+  case 'sell':act('sell:'+b.dataset.pos);break;
+  case 'giveup':if(!confirmGiveup){confirmGiveup=true;render();setTimeout(()=>{if(confirmGiveup){confirmGiveup=false;render();}},4000);}else{confirmGiveup=false;act('giveup');}break;
   default:if(['roll','buy','pass','take','end'].includes(a))act(a);}
 });
 
