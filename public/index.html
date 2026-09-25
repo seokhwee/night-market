@@ -423,7 +423,7 @@ function setOwned(s,g,o){return o>=0&&groupTiles(g).every(j=>s.owners[j]===o);}
 function parksOf(s,o){let n=0;T.forEach((t,j)=>{if(t.k==='park'&&s.owners[j]===o)n++});return n;}
 function rent(s,pos){const t=T[pos],o=s.owners[pos];
   if(t.k==='park')return CFG.parkRent[Math.max(0,parksOf(s,o)-1)];
-  let m=1;if(setOwned(s,t.g,o))m=2;else{const gt=groupTiles(t.g);if(gt.length===3&&gt.filter(j=>s.owners[j]===o).length===2)m=1.5;}
+  const m=setOwned(s,t.g,o)?2:1;
   return Math.round(t.p*CFG.rentMult*m*CFG.exMult[lvOf(s,pos)]/10)*10;}
 function lvOf(s,j){return (s&&s.lv&&s.lv[j])||0;}
 function exCost(j){return Math.round(T[j].p*CFG.exCost/10)*10;}
@@ -702,7 +702,7 @@ function statusHTML(){
 function rulesHTML(){return `<div class="panel"><ol class="rules">
     <li>순서는 무작위로 정해요. 뒤 순서일수록 시작 자금을 <b>${CFG.orderBonus}${UNIT}</b>씩 더 받아요.</li>
     <li>빈 노점이나 주차장에 서면 <b>살 수 있어요</b>. 남의 칸이면 이용료를 내요.</li>
-    <li>같은 색 노점을 <b>모두 모으면 이용료 2배</b>. 3개짜리 세트는 2개만 모아도 1.5배예요.</li>
+    <li>같은 색 노점을 <b>모두 모으면 이용료 2배</b>가 돼요.</li>
     <li>남의 노점에 서면 이용료를 낸 뒤 가게값의 ${CFG.takeMult}배로 <b>인수</b>할 수 있어요. 세트가 완성된 노점은 인수할 수 없어요.</li>
     <li><b>사업 확장</b>: 내 노점에 다시 서거나 입구를 지날 때, 노점 하나를 확장할 수 있어요 (단계당 가게값의 절반). 이용료가 ×1.5 → ×2 → ×2.5로 올라요. <b>3단계 명물 가게</b>는 인수할 수 없어요.</li>
     <li>주차장은 많이 가질수록 이용료가 올라요 (${CFG.parkRent.join(' · ')}).</li>
@@ -750,7 +750,6 @@ function tileSheetHTML(i){const t=T[i];const o=inGame()?S.owners[i]:-1;const own
   let rows='',extra='';
   if(t.k==='s'){const base=Math.round(t.p*CFG.rentMult/10)*10;const gt=groupTiles(t.g);
     rows+=`<dt>가게값</dt><dd>${t.p}${UNIT}</dd><dt>기본 이용료</dt><dd>${base}${UNIT}</dd>`;
-    if(gt.length===3)rows+=`<dt>같은 색 2개</dt><dd>${Math.round(base*1.5/10)*10}${UNIT}</dd>`;
     rows+=`<dt>세트 완성 (${gt.length}개)</dt><dd>${base*2}${UNIT}</dd>`;
     const L=inGame()?lvOf(S,i):0;
     rows+=`<dt>확장 단계</dt><dd>${L>=CFG.exMax?'명물 가게 (최고)':L+' / '+CFG.exMax}</dd><dt>확장 비용</dt><dd>단계당 ${exCost(i)}${UNIT}</dd><dt>이용료 배수</dt><dd>${CFG.exMult.map((m,k)=>k===L?`<b style="color:var(--lantern)">×${m}</b>`:'×'+m).join(' → ')}</dd>`;

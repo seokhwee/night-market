@@ -39,7 +39,7 @@ function setOwned(s,g,o){return o>=0&&groupTiles(g).every(j=>s.owners[j]===o);}
 function parksOf(s,o){let n=0;T.forEach((t,j)=>{if(t.k==='park'&&s.owners[j]===o)n++});return n;}
 function rent(s,pos){const t=T[pos],o=s.owners[pos];
   if(t.k==='park')return CFG.parkRent[Math.max(0,parksOf(s,o)-1)];
-  let m=1;if(setOwned(s,t.g,o))m=2;else{const gt=groupTiles(t.g);if(gt.length===3&&gt.filter(j=>s.owners[j]===o).length===2)m=1.5;}
+  const m=setOwned(s,t.g,o)?2:1;
   return Math.round(t.p*CFG.rentMult*m*CFG.exMult[lvOf(s,pos)]/10)*10;}
 function lvOf(s,j){return (s&&s.lv&&s.lv[j])||0;}
 function exCost(j){return Math.round(T[j].p*CFG.exCost/10)*10;}
