@@ -133,6 +133,12 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .pchip.now{border-color:var(--pink);background:#3a2550}
 .pchip.me .pn{color:var(--lantern);font-weight:700}
 .pchip.out{opacity:.4}
+.pchip.spec{appearance:none;cursor:pointer;color:var(--text);padding:3px 12px 3px 8px;border-style:dashed;border-color:var(--line)}
+.pchip.spec .eye{width:clamp(18px,3.4cqmin,24px);height:auto;color:#9fd6ff}
+.pchip.spec .money{font-size:clamp(11px,1.9cqmin,14px)}
+.pchip.mespec{border-color:#9fd6ff;border-style:solid}
+.pill.specp{background:#9fd6ff;color:#0b2233}
+.members .tok.sm{width:20px}
 .pchip .tok{width:clamp(20px,4cqmin,28px)}
 .ibs{display:flex;gap:6px;flex:none}
 .ib{appearance:none;width:clamp(34px,6.4cqmin,42px);height:clamp(34px,6.4cqmin,42px);border-radius:12px;border:1.5px solid var(--line);background:rgba(36,48,88,.85);color:var(--text);display:grid;place-items:center;cursor:pointer;padding:0}
@@ -308,7 +314,7 @@ details.panel[open] summary{margin-bottom:10px}
 .kv dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
 .kv dd.hl{color:var(--lantern)}
 .members{display:flex;flex-wrap:wrap;gap:6px}
-.members span{font-size:13px;background:var(--night3);border-radius:8px;padding:3px 9px;display:inline-flex;align-items:center;gap:6px}
+.members>span{font-size:13px;background:var(--night3);border-radius:8px;padding:3px 9px;display:inline-flex;align-items:center;gap:6px}
 .members i{width:9px;height:9px;border-radius:50%;background:var(--o,#6b7394)}
 
 @media (prefers-reduced-motion:reduce){
@@ -590,13 +596,20 @@ function animateTokens(){
 
 /* ---------- center ---------- */
 const IC={
+ eye:'<svg class="eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>',
  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5z"/><path d="M4 19.5A2.5 2.5 0 006.5 22H20v-5"/><path d="M9 7h7M9 11h5"/></svg>',
  smile:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M8 14.5q4 3.5 8 0"/><circle cx="9" cy="9.5" r=".6" fill="currentColor"/><circle cx="15" cy="9.5" r=".6" fill="currentColor"/></svg>'};
+function spectators(){if(!online()||!S||!S.code)return [];const ids=new Set(S.players.map(p=>p.id));
+  return peers.filter(pe=>pe.presence&&pe.presence.join===S.code&&!ids.has(pe.peer)&&!(pe.presence.host)).map(pe=>({peer:pe.peer,name:clean(pe.presence.name)||'구경꾼',c:chOk(pe.presence.ch),me:!!pe.sameTab,away:!!pe.away}));}
+function chOk(v){const k=Number(v);return Number.isInteger(k)&&k>=0&&k<CH.length?k:0;}
+function amSpectator(){return online()&&inGame()&&myIdx()<0;}
 function topbar(){let chips='';
   if(inGame()){const me=myId();const away=new Set();peers.forEach(pe=>{if(pe.away){if(pe.presence&&pe.presence.host)away.add('@host');else away.add(pe.peer);}});
     chips=S.players.map((p,i)=>`<div class="pchip${i===S.turn&&S.phase==='play'&&!p.out?' now':''}${p.out?' out':''}${mode!=='local'&&p.id===me?' me':''}" data-pid="${i}">${tokHTML(p)}<span class="pt"><span class="pn">${esc(p.name)}${mode!=='local'&&p.id===me?' (나)':''}${p.skip?' · 쉼':''}${away.has(p.id)&&!p.out?' · 연결 끊김':''}</span><b class="money">${p.out?'파산':p.money.toLocaleString()+UNIT}</b></span></div>`).join('');}
   const rb=online()&&S&&S.phase==='play'?`<button class="ib" data-act="reactmenu" aria-label="반응 보내기">${IC.smile}</button>`:'';
+  const sp=inGame()?spectators():[];
+  if(sp.length||amSpectator())chips+=`<button class="pchip spec${amSpectator()?' mespec':''}" data-act="specs" title="${esc(sp.map(x=>x.name).join(', '))}">${IC.eye}<span class="pt"><span class="pn">${amSpectator()?'나는 관전 중':'구경 중'}</span><b class="money">${sp.length}명</b></span></button>`;
   return `<div class="topbar"><div class="pchips">${chips}</div><div class="ibs">${rb}<button class="ib" data-act="rules" aria-label="규칙">${IC.book}</button><button class="ib" data-act="settings" aria-label="설정">${IC.gear}</button></div></div>`;}
 function setCenter(key,html,always){if(always||key!==centerKey){center.innerHTML=topbar()+`<div class="main">${html}</div>`;centerKey=key;}}
 function dieHTML(n,roll){const F={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};const on=F[n]||[];
@@ -663,7 +676,7 @@ function renderCenter(){
     else if(S.stage==='expand'){const j=S.exTarget,t=T[j],L=lvOf(S,j);acts=`<button class="btn ex" data-act="ex" data-pos="${j}" ${dis}>${t.n} 확장 ${L}→${L+1}단계${L+1>=CFG.exMax?' (명물)':''} · ${exCost(j)}${UNIT}</button><button class="ghost" data-act="pass" ${dis}>안 할래요</button>`;}
     else if(S.stage==='expandAny'){const js=expandable(S,S.turn).sort((a,b)=>b-a);acts=`<div class="exlist">${js.map(j=>`<button class="exchip" style="--g:${G[T[j].g]}" data-act="ex" data-pos="${j}" ${dis}>${T[j].n}<small>${lvOf(S,j)}→${lvOf(S,j)+1} · ${exCost(j)}</small></button>`).join('')}</div><button class="ghost" data-act="pass" ${dis}>안 할래요</button>`;}
     else acts=`<button class="btn pink" data-act="end" ${dis}>턴 넘기기</button>`;}
-  const youTag=(mode!=='local'&&mine?'<span class="pill">내 차례</span>':'')+(S.dbl&&S.phase==='play'?`<span class="pill dblp">더블 ×${S.dbl}</span>`:'');
+  const youTag=(mode!=='local'&&mine?'<span class="pill">내 차례</span>':'')+(amSpectator()?'<span class="pill specp">관전 중</span>':'')+(S.dbl&&S.phase==='play'?`<span class="pill dblp">더블 ×${S.dbl}</span>`:'');
   setCenter('play',`<div class="round"><b>${S.round}</b> / ${CFG.rounds} 라운드</div>
     <div class="turnline">${tokHTML(cur,'lg')}<span class="who"><b>${esc(cur.name)} 차례</b><small>${CH[cur.c].food} ${CH[cur.c].n}</small></span> ${youTag}${online()?'<span class="tsec" id="tsec"></span>':''}</div>
     ${online()?'<div class="timer" id="timer"><i></i></div>':''}
@@ -713,6 +726,8 @@ function rulesHTML(){return `<div class="panel"><ol class="rules">
     <li>칸을 누르면 가격, 이용료, 주인, 같은 세트 칸을 볼 수 있어요. 세트는 칸 색으로 구분돼요.</li></ol></div>`;}
 function settingsHTML(){
   let h=`<div class="head"><h3>설정</h3><button class="ghost" data-act="close">닫기</button></div><div class="panel">${statusHTML()}${S&&mode!=='local'&&S.code?`<p class="note" style="margin-top:6px">방 코드 <b style="color:var(--lantern);letter-spacing:.08em">${esc(S.code)}</b></p>`:''}</div>`;
+  const spl=inGame()?spectators():[];
+  if(spl.length)h+=`<div class="panel"><h2>구경 중 ${spl.length}명</h2><div class="members">${spl.map(x=>`<span>${tokHTML({c:x.c},'sm')}${esc(x.name)}${x.me?' (나)':''}${x.away?' · 연결 끊김':''}</span>`).join('')}</div></div>`;
   if(inGame())h+=`<div class="panel"><h2>기록</h2><ul class="log">${S.log.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></div>`;
   if((mode==='host'||mode==='local')&&S&&S.phase==='play')h+=`<button class="ghost" data-act="finish">${confirmEnd?'정말 끝낼까요? 한 번 더 누르면 자산 순으로 순위를 매겨요':'여기서 게임 끝내기'}</button>`;
   if(mode!=='menu')h+=`<button class="ghost" data-act="leaveask">${confirmLeave?'정말 나갈까요? 한 번 더 누르면 나가요'+(mode==='host'?' (방이 닫혀요)':''):'게임 나가기'}</button>`;
@@ -773,13 +788,16 @@ function showReact(p,e){if(!p)return;const b=document.createElement('div');b.cla
   while(reacts.children.length>4)reacts.firstChild.remove();setTimeout(()=>b.remove(),2900);}
 function sendReact(e){if(!room||!online()||!S||S.phase!=='play')return;if(!REACTS.includes(e)&&!WORDS.includes(e))return;
   const now=Date.now();if(now-lastReactAt<1200)return;lastReactAt=now;reactN++;
-  room.presence({react:{n:reactN,e}}).catch(()=>{});const i=myIdx();if(i>=0)showReact(S.players[i],e);}
+  room.presence({react:{n:reactN,e}}).catch(()=>{});const i=myIdx();if(i>=0)showReact(S.players[i],e);
+  else{const me=spectators().find(x=>x.me);showReact({name:(me?me.name:myName||'구경꾼')+' (관전)',c:me?me.c:chOk(myCh)},e);}}
 function checkReacts(){if(!online()||!S)return;const code=S.code;
-  peers.forEach(pe=>{if(pe.sameTab)return;const pr=pe.presence;if(!pr||!pr.react)return;
-    const n=+pr.react.n||0;const first=seenReact[pe.peer]===undefined;if(!first&&n<=seenReact[pe.peer])return;seenReact[pe.peer]=n;if(first)return;
+  peers.forEach(pe=>{if(pe.sameTab)return;const pr=pe.presence||{};const n=pr.react?(+pr.react.n||0):0;
+    if(seenReact[pe.peer]===undefined){seenReact[pe.peer]=n;return;}
+    if(n<=seenReact[pe.peer])return;seenReact[pe.peer]=n;
     const e=String(pr.react.e||'');if(!REACTS.includes(e)&&!WORDS.includes(e))return;
     let pl=null;if(pr.host&&pr.code===code)pl=S.players.find(p=>p.id==='@host');else if(pr.join===code)pl=S.players.find(p=>p.id===pe.peer);
-    if(pl)showReact(pl,e);});}
+    if(pl)showReact(pl,e);
+    else if(pr.join===code)showReact({name:(clean(pr.name)||'구경꾼')+' (관전)',c:chOk(pr.ch)},e);});}
 
 /* ---------- event effects ---------- */
 const fxl=document.getElementById('fxl');let prevSnap=null;const bq=[];let bBusy=false;
@@ -950,6 +968,7 @@ document.addEventListener('click',e=>{
   case 'finish':if(!confirmEnd){confirmEnd=true;renderSheet();setTimeout(()=>{if(confirmEnd){confirmEnd=false;render();}},5000);}else{confirmEnd=false;finish(S);publish();closeSheet();render();}break;
   case 'leave':leave();break;
   case 'drawer':openSheet('drawer');break;
+  case 'specs':openSheet('settings');break;
   case 'reactmenu':openSheet('react');break;
   case 'react':sendReact(b.dataset.e);if(sheetKind==='react')closeSheet();break;
   case 'close':closeSheet();break;
