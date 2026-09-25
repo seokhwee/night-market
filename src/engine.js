@@ -56,17 +56,18 @@ function goBroke(s,i,why){const p=s.players[i];p.money=0;p.out=true;if(s.lv)s.ow
 function sellValue(s,j){return Math.round((T[j].p+(T[j].k==='s'?exCost(j)*lvOf(s,j):0))*CFG.sellMult/10)*10;}
 function sellable(s,i){const a=[];s.owners.forEach((o,j)=>{if(o===i)a.push(j)});return a;}
 function assetValue(s,i){return sellable(s,i).reduce((a,j)=>a+sellValue(s,j),0);}
-function sellTile(s,i,j){const p=s.players[i];const v=sellValue(s,j);p.money+=v;s.owners[j]=-1;if(s.lv)s.lv[j]=0;return v;}
-function settleOwe(s){const p=s.players[s.turn];while(s.owe&&s.owe.length&&p.money>0){const o=s.owe[0];const x=Math.min(o.amt,p.money);p.money-=x;o.amt-=x;if(o.to>=0&&s.players[o.to])s.players[o.to].money+=x;if(o.amt<=0)s.owe.shift();}}
+function tx(s,f,t,a){if(!(a>0))return;s.txn=(s.txn||0)+1;s.tx=(s.tx||[]).concat([{n:s.txn,f,t,a}]).slice(-8);}
+function sellTile(s,i,j){const p=s.players[i];const v=sellValue(s,j);p.money+=v;tx(s,-1,i,v);s.owners[j]=-1;if(s.lv)s.lv[j]=0;return v;}
+function settleOwe(s){const p=s.players[s.turn];while(s.owe&&s.owe.length&&p.money>0){const o=s.owe[0];const x=Math.min(o.amt,p.money);p.money-=x;tx(s,s.turn,o.to,x);o.amt-=x;if(o.to>=0&&s.players[o.to])s.players[o.to].money+=x;if(o.amt<=0)s.owe.shift();}}
 function pay(s,from,to,amt){const a=s.players[from];if(a.out)return;
   if(a.money<amt&&s.phase==='play'){
-    if(from===s.turn&&sellable(s,from).length){const paid=a.money;a.money=0;if(to>=0)s.players[to].money+=paid;s.owe=s.owe||[];s.owe.push({to,amt:amt-paid});return;}
+    if(from===s.turn&&sellable(s,from).length){const paid=a.money;a.money=0;if(to>=0)s.players[to].money+=paid;tx(s,from,to,paid);s.owe=s.owe||[];s.owe.push({to,amt:amt-paid});return;}
     if(from!==s.turn){const js=sellable(s,from).sort((x,y)=>sellValue(s,x)-sellValue(s,y));const sold=[];
       while(a.money<amt&&js.length){const j=js.shift();sellTile(s,from,j);sold.push(T[j].n);}
       if(sold.length)addLog(s,`${a.name}: 돈이 모자라 ${sold.join(', ')}을(를) 자동으로 팔았어요`);}}
-  const paid=Math.min(amt,a.money);a.money-=amt;
+  const paid=Math.min(amt,a.money);a.money-=amt;tx(s,from,to,paid);
   if(to>=0)s.players[to].money+=paid;if(a.money<0)goBroke(s,from,'파산! 가게를 모두 내놓았어요');}
-function moveBy(s,i,steps){const p=s.players[i];if(steps>0&&p.pos+steps>=N){p.money+=CFG.pass;s.exPend=true;addLog(s,`${p.name}: 입구 통과 +${CFG.pass}`);}p.pos=((p.pos+steps)%N+N)%N;}
+function moveBy(s,i,steps){const p=s.players[i];if(steps>0&&p.pos+steps>=N){p.money+=CFG.pass;tx(s,-1,i,CFG.pass);s.exPend=true;addLog(s,`${p.name}: 입구 통과 +${CFG.pass}`);}p.pos=((p.pos+steps)%N+N)%N;}
 function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
   switch(t.k){
   case 's':case 'park':{const o=s.owners[p.pos];
@@ -77,7 +78,7 @@ function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
       if(t.k==='s'&&!p.out&&!s.players[o].out&&!setOwned(s,t.g,o)&&lvOf(s,p.pos)<CFG.exMax&&p.money>=takePrice(p.pos,s))s.stage='take';}
     break;}
   case 'card':{const c=CARDS[Math.floor(Math.random()*CARDS.length)];s.card=c.t;addLog(s,`${p.name} 뽑기: ${c.t}`);
-    if(c.m>0)p.money+=c.m;else if(c.m<0)pay(s,i,-1,-c.m);
+    if(c.m>0){p.money+=c.m;tx(s,-1,i,c.m);}else if(c.m<0)pay(s,i,-1,-c.m);
     if(c.inspect){const n=T.reduce((a,x,j)=>a+(x.k==='s'&&s.owners[j]===i?1:0),0);if(n)pay(s,i,-1,n*c.inspect);addLog(s,`${p.name}: 위생 점검으로 ${n*c.inspect}${UNIT} 냈어요`);}
     if(c.all)s.players.forEach((q,j)=>{if(j!==i&&!q.out)pay(s,j,i,c.all)});
     if(c.jail){p.pos=10;p.skip=true;}
@@ -114,7 +115,7 @@ function apply(s,a){const r=apply0(s,a);if(r){checkDebt(s);if(s.stage!=='sell'){
 function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players[i];
   if(typeof a==='string'&&a.indexOf('ex:')===0&&(s.stage==='expand'||s.stage==='expandAny')){const j=parseInt(a.slice(3),10);
     if(!(j>=0&&j<N)||(s.stage==='expand'&&j!==s.exTarget)||!canExpand(s,i,j))return false;
-    p.money-=exCost(j);s.lv[j]=lvOf(s,j)+1;const L=s.lv[j];
+    p.money-=exCost(j);tx(s,i,-1,exCost(j));s.lv[j]=lvOf(s,j)+1;const L=s.lv[j];
     addLog(s,`${p.name}: ${T[j].n} 확장! ${L>=CFG.exMax?'명물 가게가 됐어요 (인수 불가)':L+'단계'} · 이용료 ${rent(s,j)}${UNIT}`);s.stage='end';s.exTarget=null;return true;}
   if(s.stage==='sell'){
     if(typeof a==='string'&&a.indexOf('sell:')===0){const j=parseInt(a.slice(5),10);if(!(j>=0&&j<N)||s.owners[j]!==i)return false;
@@ -139,11 +140,11 @@ function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players
     s.extra=d1===d2&&!p.out&&!p.skip&&s.phase==='play';
     return true;}
   if(a==='buy'&&s.stage==='buy'){const t=T[p.pos];
-    if(p.money>=t.p&&s.owners[p.pos]<0){p.money-=t.p;s.owners[p.pos]=i;
+    if(p.money>=t.p&&s.owners[p.pos]<0){p.money-=t.p;tx(s,i,-1,t.p);s.owners[p.pos]=i;
       addLog(s,`${p.name}: ${t.n} 샀어요`+(t.k==='s'&&setOwned(s,t.g,i)?' · 세트 완성, 이용료 2배!':''));}
     s.stage='end';return true;}
   if(a==='take'&&s.stage==='take'){const t=T[p.pos],o=s.owners[p.pos],pr=takePrice(p.pos,s);
-    if(o>=0&&o!==i&&p.money>=pr&&!setOwned(s,t.g,o)&&lvOf(s,p.pos)<CFG.exMax){p.money-=pr;s.players[o].money+=pr;s.owners[p.pos]=i;
+    if(o>=0&&o!==i&&p.money>=pr&&!setOwned(s,t.g,o)&&lvOf(s,p.pos)<CFG.exMax){p.money-=pr;s.players[o].money+=pr;tx(s,i,o,pr);s.owners[p.pos]=i;
       addLog(s,`${p.name}: ${s.players[o].name}의 ${t.n}을(를) ${pr}${UNIT}에 인수!`+(setOwned(s,t.g,i)?' · 세트 완성!':''));}
     s.stage='end';return true;}
   if(a==='pass'&&(s.stage==='buy'||s.stage==='take')){addLog(s,`${p.name}: 그냥 지나가요`);s.stage='end';return true;}
@@ -155,6 +156,6 @@ function startGame(s){const r6=()=>1+Math.floor(Math.random()*6);
   const cmap={};s.players.forEach((p,i)=>cmap[p.id]=i);
   s.players=ps.map((p,i)=>({id:p.id,name:p.name,c:(p.ch!=null?p.ch:cmap[p.id]),pos:0,money:CFG.start+i*CFG.orderBonus,skip:false,out:false}));
   s.ord=rl.map(x=>({i:sorted.indexOf(x),d:x.d}));s.gid=Math.random().toString(36).slice(2,8);
-  s.owners=Array(N).fill(-1);s.lv=Array(N).fill(0);s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.phase='play';s.turn=0;s.round=1;s.stage='roll';s.seq=0;s.dice=[0,0];s.log=[];s.card='';s.winner=null;s.endReason=null;s.dbl=0;s.extra=false;s.lastDbl=0;
+  s.owners=Array(N).fill(-1);s.lv=Array(N).fill(0);s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.tx=[];s.txn=0;s.phase='play';s.turn=0;s.round=1;s.stage='roll';s.seq=0;s.dice=[0,0];s.log=[];s.card='';s.winner=null;s.endReason=null;s.dbl=0;s.extra=false;s.lastDbl=0;
   addLog(s,`선 뽑기: ${s.players.map((p,k)=>p.name+'('+(sorted[k].d[0]+sorted[k].d[1])+')').join(' → ')}. 뒤 순서일수록 시작 자금 +${CFG.orderBonus}`);}
 function forfeit(s,i){if(s.players[i].out)return;goBroke(s,i,'님이 나가서 기권 처리됐어요');if(s.phase==='play'&&s.turn===i){s.stage='end';nextTurn(s);}}

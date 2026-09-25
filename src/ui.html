@@ -156,6 +156,12 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .banner .t{font-family:var(--display);font-size:clamp(22px,6cqmin,54px);line-height:1.05;color:var(--bc,#ffa24c)}
 .banner .s{font-size:clamp(12px,2cqmin,16px);color:var(--text);font-weight:600}
 @keyframes pop{0%{opacity:0;transform:scale(.6)}12%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.95) translateY(-8px)}}
+.bill{position:fixed;left:0;top:0;width:clamp(30px,4.2vmin,46px);z-index:45;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45));will-change:transform}
+.bill svg{display:block;width:100%;height:auto}
+.pchip.gain{animation:gain .5s ease-out}
+.pchip.lose{animation:lose .45s ease-out}
+@keyframes gain{40%{box-shadow:0 0 0 3px #6ee69a,0 0 18px rgba(110,230,154,.7);transform:scale(1.06)}}
+@keyframes lose{40%{box-shadow:0 0 0 3px #ff7a7a;transform:translateY(2px)}}
 .mfloat{position:fixed;z-index:40;font-weight:700;font-variant-numeric:tabular-nums;pointer-events:none;font-size:15px;animation:mf 1.6s ease-out forwards;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 .mfloat.plus{color:#6ee69a}.mfloat.minus{color:#ff7a7a}
 @keyframes mf{0%{opacity:0;transform:translateY(6px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-18px)}}
@@ -680,7 +686,48 @@ function ceremony(){
   const close=()=>{ordTimers.forEach(t=>{clearTimeout(t);clearInterval(t);});if(!el.isConnected)return;el.classList.add('out');setTimeout(()=>el.remove(),350);ordEl=null;};
   el.addEventListener('click',close);ordTimers.push(setTimeout(close,ORD_MS));}
 
-function render(){renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();detect();ceremony();}
+/* ---------- money flying between players ---------- */
+let txSeen=null,txGid=null,txQueue=0;
+const BILL='<svg viewBox="0 0 34 18" aria-hidden="true"><rect x=".75" y=".75" width="32.5" height="16.5" rx="2.5" fill="#6fd08c" stroke="#1f6b3a" stroke-width="1.5"/><rect x="3.5" y="3.5" width="27" height="11" rx="1.5" fill="none" stroke="#2f8a4c" stroke-width="1"/><circle cx="17" cy="9" r="3.6" fill="#b9f5c9" stroke="#1f6b3a" stroke-width="1"/><text x="17" y="11.3" text-anchor="middle" font-size="5.6" font-weight="700" fill="#1f6b3a" font-family="sans-serif">냥</text></svg>';
+function chipPoint(i){const el=center.querySelector(`[data-pid="${i}"]`);if(!el)return null;const r=el.getBoundingClientRect();if(!r.width)return null;
+  const t=el.querySelector('.tok');const tr=t?t.getBoundingClientRect():r;return {x:tr.left+tr.width/2,y:tr.top+tr.height/2};}
+function flyMoney(t,delay){
+  const from=t.f>=0?chipPoint(t.f):null,to=t.t>=0?chipPoint(t.t):null;if(!from&&!to)return;
+  const n=Math.max(3,Math.min(7,Math.round(t.a/100)+2));const dur=820;
+  const start=from||{x:to.x+(Math.random()*40-20),y:to.y-70},end=to||{x:from.x+(Math.random()*30-15),y:from.y-80};
+  const lift=Math.min(90,40+Math.abs(end.x-start.x)*.25);
+  for(let k=0;k<n;k++){const b=document.createElement('div');b.className='bill';b.innerHTML=BILL;document.body.appendChild(b);
+    const jx=(Math.random()*14-7),jy=(Math.random()*10-5),rot=Math.random()*40-20;
+    const mid={x:(start.x+end.x)/2+jx,y:Math.min(start.y,end.y)-lift+jy};
+    const kf=to&&from?[
+      {transform:`translate(${start.x}px,${start.y}px) translate(-50%,-50%) scale(.6) rotate(0deg)`,opacity:0},
+      {transform:`translate(${start.x}px,${start.y}px) translate(-50%,-50%) scale(1) rotate(${rot/2}deg)`,opacity:1,offset:.12},
+      {transform:`translate(${mid.x}px,${mid.y}px) translate(-50%,-50%) scale(1.1) rotate(${rot}deg)`,opacity:1,offset:.55},
+      {transform:`translate(${end.x+jx}px,${end.y+jy}px) translate(-50%,-50%) scale(.7) rotate(${rot/3}deg)`,opacity:1,offset:.92},
+      {transform:`translate(${end.x}px,${end.y}px) translate(-50%,-50%) scale(.3)`,opacity:0}]
+    :from?[ // to the bank: leaves the payer and vanishes
+      {transform:`translate(${start.x}px,${start.y}px) translate(-50%,-50%) scale(.6)`,opacity:0},
+      {transform:`translate(${start.x}px,${start.y}px) translate(-50%,-50%) scale(1)`,opacity:1,offset:.15},
+      {transform:`translate(${start.x+jx*4}px,${start.y-45+jy}px) translate(-50%,-50%) scale(1) rotate(${rot}deg)`,opacity:.9,offset:.55},
+      {transform:`translate(${start.x+jx*7}px,${start.y-95}px) translate(-50%,-50%) scale(.4) rotate(${rot*2}deg)`,opacity:0}]
+    :[ // from the bank: appears out of thin air and drops in
+      {transform:`translate(${start.x+jx*4}px,${start.y+jy}px) translate(-50%,-50%) scale(.3) rotate(${rot}deg)`,opacity:0},
+      {transform:`translate(${start.x+jx*2}px,${start.y+20}px) translate(-50%,-50%) scale(1) rotate(${rot/2}deg)`,opacity:1,offset:.4},
+      {transform:`translate(${end.x+jx}px,${end.y+jy}px) translate(-50%,-50%) scale(.8)`,opacity:1,offset:.88},
+      {transform:`translate(${end.x}px,${end.y}px) translate(-50%,-50%) scale(.3)`,opacity:0}];
+    const a=b.animate(kf,{duration:dur,delay:delay+k*90,easing:'cubic-bezier(.35,.1,.3,1)',fill:'both'});
+    a.onfinish=()=>b.remove();a.oncancel=()=>b.remove();}
+  if(from&&to)setTimeout(()=>{const el=center.querySelector(`[data-pid="${t.t}"]`);if(el){el.classList.remove('gain');void el.offsetWidth;el.classList.add('gain');}},delay+dur*.85);
+  if(from){const el=center.querySelector(`[data-pid="${t.f}"]`);if(el){el.classList.remove('lose');void el.offsetWidth;el.classList.add('lose');}}}
+function playTx(){
+  if(!inGame()||!S.tx){txSeen=null;return;}
+  if(txSeen===null||txGid!==S.gid){txSeen=S.txn||0;txGid=S.gid;return;}
+  const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fresh=S.tx.filter(t=>t.n>txSeen);if(!fresh.length)return;txSeen=Math.max(txSeen,...fresh.map(t=>t.n));
+  if(reduce)return;
+  requestAnimationFrame(()=>fresh.forEach((t,k)=>flyMoney(t,k*260)));}
+
+function render(){renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();detect();ceremony();playTx();}
 
 /* ---------- networking ---------- */
 function makeWsRoom(){
