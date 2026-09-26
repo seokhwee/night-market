@@ -275,6 +275,7 @@ input.f:focus{outline:none;border-color:var(--lantern)}
 .chip{display:inline-flex;align-items:center;gap:6px;background:var(--night3);border-radius:999px;padding:4px 12px 4px 5px;font-size:14px}
 .round{font-variant-numeric:tabular-nums;font-size:clamp(11px,1.7cqmin,13px);color:var(--muted);letter-spacing:.06em}
 .round b{color:var(--lantern);font-size:1.25em}
+#netpill{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:90;background:rgba(12,16,38,.94);color:#ffd9a8;border:1.5px solid #ffa24c;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:700;pointer-events:none;white-space:nowrap}
 .turnline{display:flex;align-items:center;gap:10px;font-size:clamp(14px,2.6cqmin,22px);flex-wrap:wrap;justify-content:center}
 .pill{font-size:12px;font-weight:700;background:var(--pink);color:#fff;border-radius:999px;padding:2px 9px}
 .tsec{font-variant-numeric:tabular-nums;font-size:.75em;color:var(--muted);min-width:3ch}
@@ -651,8 +652,8 @@ const REACTS=['😂','😱','👏','🔥','😤','🙏','😭','😎','🤑','�
 const WORDS=['나이스!','살려줘','빨리 해~','ㅋㅋㅋ','봐주세요','복수한다'];
 
 /* ---------- app state ---------- */
-let room=null,roomState='wait',connected=false,myPeer=null,peers=[];
-let mode='menu',S=null,joinCode=null,seenHost=false,hostGone=false;
+let room=null,roomState='wait',connected=false,connAt=0,myPeer=null,peers=[];
+let mode='menu',S=null,joinCode=null,seenHost=false,hostGone=false,hostMissAt=0,hostPeer=null;
 let confirmGiveup=false;
 let reqN=0,pending=null,confirmEnd=false,confirmLeave=false,localCount=3;
 let myCh=Math.min(7,Math.max(0,parseInt(load('nm-ch','0'),10)||0));const localChars=[0,1,2,3,4,5];const localNames=[];
@@ -788,7 +789,7 @@ function renderCenter(){
   if(mode==='guest'&&!S){
     setCenter('search',`<div class="eyebrow">방 코드</div><div class="code">${esc(joinCode)}</div><p class="wait">방을 찾는 중이에요… 코드가 맞는지 확인해 주세요.</p><button class="ghost" data-act="leave">나가기</button>`,true);return;}
   if(mode==='guest'&&hostGone){
-    setCenter('gone',`<div class="brand">게임 종료</div><p class="sub">방장이 나가서 이 판은 끝났어요.</p><button class="btn" data-act="leave">처음으로</button>`,true);return;}
+    setCenter('gone',`<div class="brand">게임 종료</div><p class="sub">방장이 나갔거나 오래 연결되지 않아 이 판은 끝났어요.</p><button class="btn" data-act="leave">처음으로</button>`,true);return;}
   const isHostish=mode==='host'||mode==='local';
   if(S.phase==='lobby'){
     const inRoom=S.players.some(p=>p.id===myId());
@@ -877,7 +878,7 @@ function autoTurn(s){const p=s.players[s.turn];if(!p)return;
     if(s.phase==='play'&&(s.stage==='buy'||s.stage==='take'||s.stage==='expand'||s.stage==='expandAny'))apply(s,'pass');
     if(s.phase==='play'&&s.stage==='end'){addLog(s,`${p.name}: 시간이 지나 자동으로 진행했어요`);apply(s,'end');break;}}}
 setInterval(()=>{if(mode!=='host'||!S||S.phase!=='play')return;const sg=sig(S),now=Date.now();
-  if(sg!==hostSig){hostSig=sg;hostStart=now;return;}
+  if(sg!==hostSig||(NET==='ws'&&(!connected||now-connAt<8000))){hostSig=sg;hostStart=now;return;} /* 연결 끊긴 동안엔 타이머 멈춤 */
   if(now-hostStart>TURN_SEC*1000+1500+(S.seq===0&&S.round===1?ORD_MS:0)){autoTurn(S);hostSig='';publish();render();}},1000);
 
 /* ---------- side / drawer ---------- */
@@ -1086,7 +1087,12 @@ function playTx(){
 let renderErrs=0;
 function render(){try{render0();renderErrs=0;}catch(e){console.error('render',e);if(++renderErrs<4)setTimeout(render,300);}}
 function render0(){renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();
-  if(!isMoving()&&!coinSpinning()){detect();playTx();}ceremony();if(mode==='local')saveSess();}
+  if(!isMoving()&&!coinSpinning()){detect();playTx();}ceremony();if(mode==='local')saveSess();netPill();}
+function netPill(){let el=document.getElementById('netpill');if(!el){el=document.createElement('div');el.id='netpill';document.body.appendChild(el);}
+  let t='';if(online()&&S&&S.phase==='play'){if(NET==='ws'&&!connected)t='연결이 끊겼어요 · 다시 연결하는 중…';else if(mode==='guest'&&hostMissAt&&!hostGone)t='방장 연결을 기다리는 중… 게임은 그대로 이어져요';}
+  el.textContent=t;el.hidden=!t;}
+setInterval(()=>{if(mode==='guest'&&hostMissAt&&!hostGone&&Date.now()-hostMissAt>150000){hostGone=true;render();}},2000);
+setInterval(()=>{if(NET==='ws'&&online())fetch('/health',{cache:'no-store'}).catch(()=>{});},240000);
 
 /* ---------- networking ---------- */
 function makeWsRoom(){
@@ -1130,7 +1136,7 @@ async function createRoom(){if(!nickOk()||!room||!myPeer)return;let code;
     if(NET!=='ws'){if(!peers.some(p=>p.presence&&p.presence.code===code))break;continue;}
     try{const r=await fetch('/api/room?code='+code);const j=await r.json();if(!j.host&&!j.count)break;}catch(e){break;}}
   if(NET==='ws')room.switchTo(code);
-  S=newGame(code);S.players=[{id:'@host',name:myName,ch:myCh}];mode='host';publish();render();}
+  S=newGame(code);S.players=[{id:'@host',name:myName,ch:myCh}];mode='host';if(room)room.presence({bye:null}).catch(()=>{});publish();render();}
 function inviteURL(){return location.origin+location.pathname+'#'+(S?S.code:'');}
 function publish(){if(!room||mode!=='host')return;
   let st=S;if(JSON.stringify(st).length>3000)st=Object.assign({},S,{log:S.log.slice(0,3)});
@@ -1154,13 +1160,17 @@ function hostTick(){if(mode!=='host'||!S)return;let changed=false;
     const cur=S.players[S.turn];if(S.phase==='play'&&cur&&cur.id===p.peer&&apply(S,String(pr.req.a)))changed=true;});
   if(changed)publish();}
 setInterval(()=>{if(mode!=='host'||!S||S.phase!=='play')return;const now=Date.now();let ch=false;
+  if(NET==='ws'&&(!connected||now-connAt<60000))return; /* 서버 재시작 직후엔 다른 사람들이 돌아올 시간을 줌 */
   S.players.forEach((p,i)=>{if(goneAt[p.id]&&now-goneAt[p.id]>25000&&!p.out){forfeit(S,i);delete goneAt[p.id];ch=true;}});
   if(ch){publish();render();}},3000);
 
 function onPeers(ch){peers=ch.peers;const me=peers.find(p=>p.sameTab);if(me)myPeer=me.peer;
   if(mode==='host')hostTick();
   else if(mode==='guest'){const h=peers.find(p=>!p.sameTab&&p.presence&&p.presence.host&&p.presence.code===joinCode&&p.presence.state);
-    if(h){S=h.presence.state;seenHost=true;hostGone=false;}else if(seenHost)hostGone=true;
+    if(h){S=h.presence.state;seenHost=true;hostGone=false;hostMissAt=0;hostPeer=h.peer;}
+    else if(seenHost){const hp=peers.find(p=>p.peer===hostPeer);
+      if(hp&&hp.presence&&hp.presence.bye===joinCode)hostGone=true; /* 방장이 직접 나감 */
+      else if(!hostMissAt)hostMissAt=Date.now();} /* 연결 문제일 수 있으니 기다림 */
     if(pending&&sig(S)!==pending)pending=null;}
   checkReacts();render();}
 
@@ -1171,10 +1181,10 @@ function act(a){
     setTimeout(()=>{if(pending){pending=null;render();}},4000);}}
 function nickOk(){const el=document.getElementById('nick');const v=clean(el?el.value:myName);if(!v){if(el){el.focus();el.placeholder='닉네임을 먼저 적어주세요';}return false;}myName=v;save('nm-nick',v);return true;}
 function joinRoom(code){code=String(code||'').replace(/\D/g,'').slice(0,4);if(code.length!==4){const c=document.getElementById('codeIn');if(c){c.focus();c.value='';c.placeholder='4자리 숫자';}return;}
-  if(!nickOk())return;joinCode=code;mode='guest';S=null;seenHost=false;hostGone=false;pending=null;
+  if(!nickOk())return;joinCode=code;mode='guest';S=null;seenHost=false;hostGone=false;hostMissAt=0;hostPeer=null;pending=null;
   if(NET==='ws')room.switchTo(code);saveSess();
   room.presence({join:code,name:myName,ch:myCh,req:null,host:null,code:null,state:null}).catch(()=>{});render();}
-function leave(){if(room&&online())room.presence({host:null,code:null,state:null,join:null,req:null,name:null,react:null}).catch(()=>{});
+function leave(){if(room&&online())room.presence({host:null,code:null,state:null,join:null,req:null,name:null,react:null,bye:mode==='host'&&S?S.code:null}).catch(()=>{});
   mode='menu';S=null;joinCode=null;pending=null;confirmEnd=false;lastSeq=null;closeSheet();for(const k in view)delete view[k];
   if(NET==='ws'&&room){room.switchTo(null);}saveSess();render();}
 
@@ -1248,7 +1258,7 @@ if(/^(localhost|127\.0\.0\.1|)$/.test(location.hostname))window.__nm={get S(){re
 render();
 if(NET==='ws'){
   room=makeWsRoom();myPeer=room.id;roomState='ok';
-  room.onConnection(c=>{connected=c;render();});
+  room.onConnection(c=>{connected=c;if(c){connAt=Date.now();for(const k in goneAt)delete goneAt[k];}render();});
   room.onPeers(onPeers);
   if(!restoreSess())render();
 }else try{
