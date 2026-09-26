@@ -7,7 +7,7 @@ const T=[
  S_('붕어빵',60,0),CD,S_('호떡',60,0),{k:'tax',n:'자릿세',amt:100,d:'-100냥'},PK('북문 주차장','북문P'),S_('어묵',100,1),CD,S_('계란빵',100,1),S_('꽈배기',120,1),
  {k:'jail',n:'단속반',d:'구경만 해요'},
  S_('떡볶이',140,2),{k:'busk',n:'버스킹',d:'모두에게 20씩'},S_('순대',140,2),S_('튀김',160,2),PK('동문 주차장','동문P'),S_('김밥',180,3),CD,S_('핫바',180,3),S_('소떡소떡',200,3,'소떡'),
- {k:'rest',n:'분수광장',d:'쉬어가기'},
+ {k:'rest',n:'분수광장',d:'세금 환급'},
  S_('닭꼬치',220,4),{k:'coin',n:'동전 던지기',d:'2배·3배·5배'},S_('핫도그',220,4),S_('회오리감자',240,4,'회오리'),PK('남문 주차장','남문P'),S_('군고구마',260,5,'고구마'),S_('츄러스',260,5),{k:'tax',n:'전기세',amt:150,d:'-150냥'},S_('와플',280,5),
  {k:'gojail',n:'단속 걸림',d:'단속반으로 · 한 턴 쉼'},
  S_('탕후루',300,6),S_('버블티',300,6),CD,S_('크레페',320,6),PK('서문 주차장','서문P'),CD,S_('타코야끼',350,7,'타코'),{k:'tax',n:'가스비',amt:120,d:'-120냥'},S_('스테이크 큐브',400,7,'스테이크')
@@ -58,14 +58,14 @@ function sellable(s,i){const a=[];s.owners.forEach((o,j)=>{if(o===i)a.push(j)});
 function assetValue(s,i){return sellable(s,i).reduce((a,j)=>a+sellValue(s,j),0);}
 function tx(s,f,t,a){if(!(a>0))return;s.txn=(s.txn||0)+1;s.tx=(s.tx||[]).concat([{n:s.txn,f,t,a}]).slice(-8);}
 function sellTile(s,i,j){const p=s.players[i];const v=sellValue(s,j);p.money+=v;tx(s,-1,i,v);s.owners[j]=-1;if(s.lv)s.lv[j]=0;return v;}
-function settleOwe(s){const p=s.players[s.turn];while(s.owe&&s.owe.length&&p.money>0){const o=s.owe[0];const x=Math.min(o.amt,p.money);p.money-=x;tx(s,s.turn,o.to,x);o.amt-=x;if(o.to>=0&&s.players[o.to])s.players[o.to].money+=x;if(o.amt<=0)s.owe.shift();}}
+function settleOwe(s){const p=s.players[s.turn];while(s.owe&&s.owe.length&&p.money>0){const o=s.owe[0];const x=Math.min(o.amt,p.money);p.money-=x;if(o.to<0)s.pot=(s.pot||0)+x;tx(s,s.turn,o.to<0?-2:o.to,x);o.amt-=x;if(o.to>=0&&s.players[o.to])s.players[o.to].money+=x;if(o.amt<=0)s.owe.shift();}}
 function pay(s,from,to,amt){const a=s.players[from];if(a.out)return;
   if(a.money<amt&&s.phase==='play'){
-    if(from===s.turn&&sellable(s,from).length){const paid=a.money;a.money=0;if(to>=0)s.players[to].money+=paid;tx(s,from,to,paid);s.owe=s.owe||[];s.owe.push({to,amt:amt-paid});return;}
+    if(from===s.turn&&sellable(s,from).length){const paid=a.money;a.money=0;if(to>=0)s.players[to].money+=paid;else s.pot=(s.pot||0)+paid;tx(s,from,to<0?-2:to,paid);s.owe=s.owe||[];s.owe.push({to,amt:amt-paid});return;}
     if(from!==s.turn){const js=sellable(s,from).sort((x,y)=>sellValue(s,x)-sellValue(s,y));const sold=[];
       while(a.money<amt&&js.length){const j=js.shift();sellTile(s,from,j);sold.push(T[j].n);}
       if(sold.length)addLog(s,`${a.name}: 돈이 모자라 ${sold.join(', ')}을(를) 자동으로 팔았어요`);}}
-  const paid=Math.min(amt,a.money);a.money-=amt;tx(s,from,to,paid);
+  const paid=Math.min(amt,a.money);a.money-=amt;if(to<0)s.pot=(s.pot||0)+paid;tx(s,from,to<0?-2:to,paid);
   if(to>=0)s.players[to].money+=paid;if(a.money<0)goBroke(s,from,'파산! 가게를 모두 내놓았어요');}
 function moveBy(s,i,steps){const p=s.players[i];if(steps>0&&p.pos+steps>=N){p.money+=CFG.pass;tx(s,-1,i,CFG.pass);s.exPend=true;addLog(s,`${p.name}: 입구 통과 +${CFG.pass}`);}p.pos=((p.pos+steps)%N+N)%N;}
 function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
@@ -89,7 +89,8 @@ function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
   case 'gojail':p.pos=10;p.skip=true;addLog(s,`${p.name}: 단속에 걸려 단속반으로! 다음 턴은 쉬어요`);break;
   case 'jail':addLog(s,`${p.name}: 단속반을 구경만 해요`);break;
   case 'busk':{let n=0;s.players.forEach((q,j)=>{if(j!==i&&!q.out){pay(s,j,i,20);n++}});addLog(s,`${p.name}: 버스킹 공연으로 ${n*20}${UNIT} 모았어요`);break;}
-  case 'rest':addLog(s,`${p.name}: 분수광장에서 쉬어가요`);break;
+  case 'rest':if(s.pot>0){const w=s.pot;s.pot=0;p.money+=w;tx(s,-2,i,w);s.potN=(s.potN||0)+1;s.potWin={n:s.potN,i,a:w};addLog(s,`${p.name}: 분수광장 세금 환급! 모인 ${w}${UNIT}을 모두 받아요`);}
+    else addLog(s,`${p.name}: 분수광장에 왔지만 모인 세금이 없어요`);break;
   case 'coin':if(p.money>=CFG.coinBets[0]){s.stage='coinBet';s.coin=null;addLog(s,`${p.name}: 동전 던지기 칸! 도전할까요?`);}else addLog(s,`${p.name}: 동전 던지기에 걸 돈이 부족해요`);break;
   case 'start':addLog(s,`${p.name}: 입구에 도착`);break;}
 }
@@ -173,6 +174,6 @@ function startGame(s){const r6=()=>1+Math.floor(Math.random()*6);
   const cmap={};s.players.forEach((p,i)=>cmap[p.id]=i);
   s.players=ps.map((p,i)=>({id:p.id,name:p.name,c:(p.ch!=null?p.ch:cmap[p.id]),pos:0,money:CFG.start+i*CFG.orderBonus,skip:false,out:false}));
   s.ord=rl.map(x=>({i:sorted.indexOf(x),d:x.d}));s.gid=Math.random().toString(36).slice(2,8);
-  s.owners=Array(N).fill(-1);s.lv=Array(N).fill(0);s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.tx=[];s.txn=0;s.phase='play';s.turn=0;s.round=1;s.stage='roll';s.seq=0;s.dice=[0,0];s.log=[];s.card='';s.winner=null;s.endReason=null;s.dbl=0;s.extra=false;s.lastDbl=0;
+  s.owners=Array(N).fill(-1);s.lv=Array(N).fill(0);s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.tx=[];s.txn=0;s.pot=0;s.potN=0;s.potWin=null;s.phase='play';s.turn=0;s.round=1;s.stage='roll';s.seq=0;s.dice=[0,0];s.log=[];s.card='';s.winner=null;s.endReason=null;s.dbl=0;s.extra=false;s.lastDbl=0;
   addLog(s,`선 뽑기: ${s.players.map((p,k)=>p.name+'('+(sorted[k].d[0]+sorted[k].d[1])+')').join(' → ')}. 뒤 순서일수록 시작 자금 +${CFG.orderBonus}`);}
 function forfeit(s,i){if(s.players[i].out)return;goBroke(s,i,'님이 나가서 기권 처리됐어요');if(s.phase==='play'&&s.turn===i){s.stage='end';nextTurn(s);}}

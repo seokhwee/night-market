@@ -60,6 +60,12 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .tile.corner .nm{font-family:var(--display);font-weight:400;font-size:clamp(9px,2.1cqmin,18px);padding:4px 3px 0 4px;white-space:normal;letter-spacing:0;color:var(--lantern)}
 .tile.k-gojail.corner .nm{color:#ffd84d}
 .tile.k-busk{--tb:#283462}
+.tile .pot{position:absolute;left:6%;top:40%;z-index:2;font-weight:800;font-size:clamp(9px,min(1.3cqw,2.6cqh),16px);color:#06222b;background:linear-gradient(180deg,#bfeaff,#6cc8ff);border-radius:6px;padding:1px 6px;box-shadow:0 2px 6px rgba(0,0,0,.4);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tile .pot.big{animation:potglow 1.2s ease-in-out infinite alternate}
+@keyframes potglow{to{box-shadow:0 0 0 2px #fff,0 0 14px 4px rgba(108,200,255,.8)}}
+.tile.potin{animation:potin .5s ease-out}
+@keyframes potin{40%{filter:brightness(1.6)}}
+.round .potv{color:#9fd6ff}
 .tile.k-coin{--tb:#3b2a05;background-image:radial-gradient(circle at 70% 70%,rgba(255,210,77,.35),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.10),rgba(0,0,0,.18))}
 .tile.k-coin .nm{color:#ffd84d}
 .tile.k-coin .pr{color:#ffe7a3}
@@ -420,6 +426,7 @@ const tiles=T.map((t,i)=>{const el=document.createElement('button');el.type='but
   else if(ICO[t.k])el.insertAdjacentHTML('beforeend',ICO[t.k]);
   if(t.k==='tax'||t.k==='gojail'){const b=document.createElement('div');b.className='band';el.insertBefore(b,el.firstChild);}
   const lv=document.createElement('div');lv.className='lvl';lv.hidden=true;el.appendChild(lv);
+  if(t.k==='rest'){const pb=document.createElement('div');pb.className='pot';pb.hidden=true;el.appendChild(pb);}
   const fl=document.createElement('div');fl.className='flag';fl.hidden=true;el.appendChild(fl);
   const tk=document.createElement('div');tk.className='toks';el.appendChild(tk);
   board.insertBefore(el,center);return el;});
@@ -428,6 +435,7 @@ function renderBoard(){
   const st=sheetKind&&sheetKind.startsWith('tile:')?T[+sheetKind.slice(5)]:null;const hg=st&&st.k==='s'?st.g:(hlGroup!=null?hlGroup:null);
   const sells=(inGame()&&S.stage==='sell')?new Set(sellable(S,S.turn)):null;
   const exs=(canAct()&&S.stage==='expandAny')?new Set(expandable(S,S.turn)):(canAct()&&S.stage==='expand'?new Set([S.exTarget]):null);
+  const pb=tiles[20].querySelector('.pot');if(pb){const v=inGame()?(S.pot||0):0;const txt=inGame()?`적립 ${v.toLocaleString()}${UNIT}`:'';if(pb.textContent!==txt)pb.textContent=txt;pb.hidden=!inGame();pb.classList.toggle('big',v>=500);}
   tiles.forEach((el,i)=>{const lvEl=el.querySelector('.lvl');const L=inGame()?lvOf(S,i):0;
     if(lvEl){lvEl.hidden=!L;const txt=L>=CFG.exMax?'명물':'★'.repeat(L);if(lvEl.textContent!==txt)lvEl.textContent=txt;lvEl.classList.toggle('star3',L>=CFG.exMax);}
     el.classList.toggle('exable',!!exs&&exs.has(i));el.classList.toggle('sellable',!!sells&&sells.has(i));
@@ -546,7 +554,7 @@ function renderCenter(){
     else if(S.stage==='coinNext'){const c=S.coin,m=CFG.coinMult[c.streak-1],nx=CFG.coinMult[c.streak];acts=`<button class="btn" data-act="cash" ${dis}>${(c.bet*m).toLocaleString()}${UNIT} 받고 멈추기</button><button class="btn pink" data-act="again" ${dis}>한 번 더! ×${nx} 도전</button>`;}
     else acts=`<button class="btn pink" data-act="end" ${dis}>턴 넘기기</button>`;}
   const youTag=(mode!=='local'&&mine?'<span class="pill">내 차례</span>':'')+(amSpectator()?'<span class="pill specp">관전 중</span>':'')+(S.dbl&&S.phase==='play'?`<span class="pill dblp">더블 ×${S.dbl}</span>`:'');
-  setCenter('play',`<div class="round"><b>${S.round}</b> / ${CFG.rounds} 라운드</div>
+  setCenter('play',`<div class="round"><b>${S.round}</b> / ${CFG.rounds} 라운드${S.pot?` · 분수 적립 <b class="potv">${S.pot.toLocaleString()}</b>${UNIT}`:''}</div>
     <div class="turnline">${tokHTML(cur,'lg')}<span class="who"><b>${esc(cur.name)} 차례</b><small>${CH[cur.c].food} ${CH[cur.c].n}</small></span> ${youTag}${online()?'<span class="tsec" id="tsec"></span>':''}</div>
     ${online()?'<div class="timer" id="timer"><i></i></div>':''}
     ${showCoin&&!walking?coinPanel(cur,spin):`<div class="dicerow${S.dice[0]&&S.dice[0]===S.dice[1]?' isdbl':''}">${dieHTML(S.dice[0],rolling)}${dieHTML(S.dice[1],rolling)}<span class="total">${S.dice[0]?S.dice[0]+S.dice[1]:''}</span></div>
@@ -616,6 +624,7 @@ function rulesHTML(){return `<div class="panel"><ol class="rules">
     <li>주차장은 많이 가질수록 이용료가 올라요 (${CFG.parkRent.join(' · ')}).</li>
     <li>주사위 두 개가 같은 눈이면 <b>더블</b>! 한 번 더 굴려요. 더블이 <b>3번 연속</b> 나오면 단속반으로 끌려가 다음 턴을 쉬어요.</li>
     <li>입구를 지날 때마다 <b>+${CFG.pass}${UNIT}</b>.</li>
+    <li><b>분수광장 세금 환급</b>: 세금, 벌금, 위생 점검, 치과비로 낸 돈은 분수광장에 쌓여요. 분수광장에 도착한 사람이 모인 돈을 전부 가져가요.</li>
     <li><b>동전 던지기 칸</b>: 100·200·300냥 중 하나를 걸고 앞·뒤를 맞혀요. 맞히면 <b>×2</b>에서 멈추거나 한 번 더 도전해 <b>2연속 ×3</b>, <b>3연속 ×5</b>를 노릴 수 있어요. 틀리면 건 돈을 잃어요.</li>
     <li><b>돈이 모자라면</b> 가진 가게를 골라 은행에 <b>반값</b>(확장 비용 포함)으로 팔아 메워요. 다 팔아도 모자라면 파산이에요. 남의 차례에 내는 소액은 가장 싼 가게부터 자동으로 팔아요.</li>
     <li>온라인에서는 <b>${TURN_SEC}초</b> 안에 행동하지 않으면 자동으로 진행돼요.</li>
@@ -670,7 +679,9 @@ function tileSheetHTML(i){const t=T[i];const o=inGame()?S.owners[i]:-1;const own
     extra=`<div><div class="eyebrow" style="margin-bottom:6px">${GN[t.g]} 세트</div><div class="members">${gt.map(j=>{const oo=inGame()?S.owners[j]:-1;const op=oo>=0?S.players[oo]:null;
       return `<span style="--o:${op?PC[op.c]:'#6b7394'}"><i></i>${T[j].n}${op?' · '+esc(op.name):''}</span>`}).join('')}</div></div>`;}
   else if(t.k==='park'){rows+=`<dt>가격</dt><dd>${t.p}${UNIT}</dd>`+CFG.parkRent.map((r,k)=>`<dt>주차장 ${k+1}개 보유</dt><dd>${r}${UNIT}</dd>`).join('');}
-  else rows+=`<dt>효과</dt><dd>${esc(t.d||'')}${t.k==='tax'?'':''}</dd>`;
+  else if(t.k==='rest')rows+=`<dt>효과</dt><dd>세금·벌금이 모여요</dd><dt>지금 적립금</dt><dd class="hl">${(inGame()?S.pot||0:0).toLocaleString()}${UNIT}</dd>`;
+  else if(t.k==='tax')rows+=`<dt>효과</dt><dd>${t.amt}${UNIT} 내요 → 분수광장 적립</dd>`;
+  else rows+=`<dt>효과</dt><dd>${esc(t.d||'')}</dd>`;
   if(t.k==='s'||t.k==='park'){rows+=`<dt>주인</dt><dd>${owner?esc(owner.name):'없음'}</dd>`;if(owner)rows+=`<dt>지금 이용료</dt><dd class="hl">${rent(S,i)}${UNIT}</dd>`;}
   const sw=t.k==='s'?`<span class="swatch" style="--g:${G[t.g]}"></span>`:'';
   return `<div class="grab"></div><div class="head"><h3>${sw}${esc(t.n)}</h3><button class="ghost" data-act="close">닫기</button></div><dl class="kv">${rows}</dl>${extra}`;}
@@ -699,12 +710,13 @@ function checkReacts(){if(!online()||!S)return;const code=S.code;
 
 /* ---------- event effects ---------- */
 const fxl=document.getElementById('fxl');let prevSnap=null;const bq=[];let bBusy=false;
-function snap(s){return {lv:(s.lv||[]).slice(),owners:s.owners.slice(),out:s.players.map(p=>!!p.out),skip:s.players.map(p=>!!p.skip),money:s.players.map(p=>p.money),seq:s.seq,phase:s.phase,key:s.players.map(p=>p.id).join()};}
+function snap(s){return {potN:s.potN||0,lv:(s.lv||[]).slice(),owners:s.owners.slice(),out:s.players.map(p=>!!p.out),skip:s.players.map(p=>!!p.skip),money:s.players.map(p=>p.money),seq:s.seq,phase:s.phase,key:s.players.map(p=>p.id).join()};}
 function detect(){
   if(!inGame()){prevSnap=null;return;}
   const cur=snap(S),pv=prevSnap;prevSnap=cur;
   if(!pv||pv.key!==cur.key||pv.phase!=='play'||cur.seq<pv.seq)return;
   let triple=false;
+  if(cur.potN>pv.potN&&S.potWin&&S.players[S.potWin.i]){const p=S.players[S.potWin.i];if(S.potWin.a>=200)banner(p,'세금 환급!',`분수광장 적립금 +${S.potWin.a.toLocaleString()}${UNIT}`,'#9fd6ff');else toast(p,`세금 환급 +${S.potWin.a}`);}
   if(cur.seq>pv.seq&&S.lastDbl){const p=S.players[S.turn];
     if(S.lastDbl>=3){triple=true;banner(p,'더블 3번!',`${p.name} 단속반으로 끌려가요`,'#ffcc00');}
     else banner(p,'더블!',S.lastDbl>=2?'한 번 더! 또 나오면 단속':'한 번 더 굴려요','#5ce1ff');}
@@ -751,8 +763,9 @@ let txSeen=null,txGid=null,txQueue=0;
 const BILL='<svg viewBox="0 0 34 18" aria-hidden="true"><rect x=".75" y=".75" width="32.5" height="16.5" rx="2.5" fill="#6fd08c" stroke="#1f6b3a" stroke-width="1.5"/><rect x="3.5" y="3.5" width="27" height="11" rx="1.5" fill="none" stroke="#2f8a4c" stroke-width="1"/><circle cx="17" cy="9" r="3.6" fill="#b9f5c9" stroke="#1f6b3a" stroke-width="1"/><text x="17" y="11.3" text-anchor="middle" font-size="5.6" font-weight="700" fill="#1f6b3a" font-family="sans-serif">냥</text></svg>';
 function chipPoint(i){const el=center.querySelector(`[data-pid="${i}"]`);if(!el)return null;const r=el.getBoundingClientRect();if(!r.width)return null;
   const t=el.querySelector('.tok');const tr=t?t.getBoundingClientRect():r;return {x:tr.left+tr.width/2,y:tr.top+tr.height/2};}
+function fountainPoint(){const el=tiles[20];if(!el)return null;const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};}
 function flyMoney(t,delay){
-  const from=t.f>=0?chipPoint(t.f):null,to=t.t>=0?chipPoint(t.t):null;if(!from&&!to)return;
+  const from=t.f>=0?chipPoint(t.f):t.f===-2?fountainPoint():null,to=t.t>=0?chipPoint(t.t):t.t===-2?fountainPoint():null;if(!from&&!to)return;
   const n=Math.max(3,Math.min(7,Math.round(t.a/100)+2));const dur=820;
   const start=from||{x:to.x+(Math.random()*40-20),y:to.y-70},end=to||{x:from.x+(Math.random()*30-15),y:from.y-80};
   const lift=Math.min(90,40+Math.abs(end.x-start.x)*.25);
@@ -777,6 +790,7 @@ function flyMoney(t,delay){
       {transform:`translate(${end.x}px,${end.y}px) translate(-50%,-50%) scale(.3)`,opacity:0}];
     const a=b.animate(kf,{duration:dur,delay:delay+k*90,easing:'cubic-bezier(.35,.1,.3,1)',fill:'both'});
     a.onfinish=()=>b.remove();a.oncancel=()=>b.remove();}
+  if(from&&to&&t.t===-2)setTimeout(()=>{tiles[20].classList.remove('potin');void tiles[20].offsetWidth;tiles[20].classList.add('potin');},delay+dur*.85);
   if(from&&to)setTimeout(()=>{const el=center.querySelector(`[data-pid="${t.t}"]`);if(el){el.classList.remove('gain');void el.offsetWidth;el.classList.add('gain');}},delay+dur*.85);
   if(from){const el=center.querySelector(`[data-pid="${t.f}"]`);if(el){el.classList.remove('lose');void el.offsetWidth;el.classList.add('lose');}}}
 function playTx(){
