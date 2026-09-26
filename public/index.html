@@ -138,17 +138,18 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .tile.lv1 .lamps,.tile.lv2 .lamps,.tile.lv3 .lamps{display:flex}
 .tile.lv1 .nm,.tile.lv2 .nm,.tile.lv3 .nm{padding-top:clamp(5px,1.1cqmin,11px)}
 .tile.lv1 .lamps i:nth-child(1),.tile.lv1 .lamps i:nth-child(3){visibility:hidden}
-.tile.lv2 .lamps i,.tile.lv3 .lamps i{animation:sway 1.8s ease-in-out infinite alternate}
-.tile.lv2 .lamps i:nth-child(2),.tile.lv3 .lamps i:nth-child(2){animation-delay:-.6s}
-.tile.lv2 .lamps i:nth-child(3),.tile.lv3 .lamps i:nth-child(3){animation-delay:-1.2s}
+.tile.lv3 .lamps i{animation:sway 1.8s ease-in-out infinite alternate}
+.tile.lv3 .lamps i:nth-child(2){animation-delay:-.6s}
+.tile.lv3 .lamps i:nth-child(3){animation-delay:-1.2s}
+.tile.lv2 .lamps i:nth-child(1){transform:rotate(-8deg)}.tile.lv2 .lamps i:nth-child(3){transform:rotate(8deg)}
 @keyframes sway{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
 .tile.lv1 .band,.tile.lv2 .band{filter:saturate(1.4) brightness(1.15)}
 .tile.lv1{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 5px rgba(255,210,77,.35),inset 0 0 12px rgba(0,0,0,.25)}
 .tile.lv2{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px rgba(255,210,77,.75),inset 0 0 14px rgba(255,200,60,.35)}
-.tile.lv2::before,.tile.lv3::before{will-change:opacity;content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+.tile.lv2::before,.tile.lv3::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
   background-image:radial-gradient(circle,rgba(255,255,255,.9) 0 1px,transparent 1.6px),radial-gradient(circle,rgba(255,236,160,.8) 0 1px,transparent 1.6px);
   background-size:17px 15px,23px 19px;background-position:3px 5px,11px 2px;animation:twk 2.2s ease-in-out infinite alternate;opacity:.5}
-@keyframes twk{to{opacity:.95;background-position:5px 4px,9px 4px}}
+@keyframes twk{to{opacity:.95}}
 .tile.lv3{z-index:1;box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px #ffd24d,inset 0 0 22px rgba(255,210,77,.55),0 0 14px 3px rgba(255,210,77,.65)}
 @keyframes halo{to{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px #fff1a8,inset 0 0 26px rgba(255,210,77,.75),0 0 18px 5px rgba(255,210,77,.8)}}
 .tile.lv3 .band{background:repeating-linear-gradient(90deg,#ffe27a 0 12.5%,#c98e00 12.5% 25%)!important;filter:none}
@@ -389,6 +390,10 @@ details.panel[open] summary{margin-bottom:10px}
 .members>span{font-size:13px;background:var(--night3);border-radius:8px;padding:3px 9px;display:inline-flex;align-items:center;gap:6px}
 .members i{width:9px;height:9px;border-radius:50%;background:var(--o,#6b7394)}
 
+html.lite .tile.lv2::before,html.lite .tile.lv3::before,html.lite .tile .lamps i,html.lite .center::before,html.lite .tile .pot.big,html.lite .tile .tok.me,html.lite .parade .tok,html.lite .tile.exable,html.lite .tile.sellable,html.lite .rung.next{animation:none!important}
+html.lite .tile.lv3{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px #ffd24d}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.switch small{display:block;color:var(--muted);font-size:12px}
 @media (prefers-reduced-motion:reduce){
   .center::before,.tile .tok.me,.die.roll,.sheet,.parade .tok,.tile .tok.hop,.banner{animation:none}
   .bubble{animation:bubfade 2.8s linear forwards}
@@ -656,7 +661,7 @@ let lastSeq=null,rollAt=0,centerKey='',sheetKind=null,hlGroup=null,hlTimer=null;
 let timerSig='',timerStart=0,hostSig='',hostStart=0,reactN=0,lastReactAt=0;
 function load(k,d){try{return localStorage.getItem(k)||d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}
-let myName=load('nm-nick','');localNames[0]=myName;
+let myName=load('nm-nick','');let lite=load('nm-lite','0')==='1';document.documentElement.classList.toggle('lite',lite);localNames[0]=myName;
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clean=s=>String(s||'').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g,'').trim().slice(0,8);
 const sig=s=>s?[s.seq,s.stage,s.turn,s.phase].join('|'):'';
@@ -896,7 +901,9 @@ function rulesHTML(){return `<div class="panel"><ol class="rules">
     <li><b>${CFG.rounds}라운드</b>가 끝나면 현금과 가게 값을 합친 자산이 가장 많은 사람이 이겨요.</li>
     <li>칸을 누르면 가격, 이용료, 주인, 같은 세트 칸을 볼 수 있어요. 세트는 칸 색으로 구분돼요.</li></ol></div>`;}
 function settingsHTML(){
-  let h=`<div class="head"><h3>설정</h3><button class="ghost" data-act="close">닫기</button></div><div class="panel">${statusHTML()}${S&&mode!=='local'&&S.code?`<p class="note" style="margin-top:6px">방 코드 <b style="color:var(--lantern);letter-spacing:.08em">${esc(S.code)}</b></p>`:''}</div>`;
+  let h=`<div class="head"><h3>설정</h3><button class="ghost" data-act="close">닫기</button></div>
+  <div class="panel switch"><span>효과 줄이기<small>화면이 버벅이거나 튕기면 켜 주세요. 반짝이·등불·지폐 효과를 줄여요.</small></span><button class="ghost" data-act="lite">${lite?'켜짐':'꺼짐'}</button></div>
+  <div class="panel">${statusHTML()}${S&&mode!=='local'&&S.code?`<p class="note" style="margin-top:6px">방 코드 <b style="color:var(--lantern);letter-spacing:.08em">${esc(S.code)}</b></p>`:''}</div>`;
   const spl=inGame()?spectators():[];
   if(spl.length)h+=`<div class="panel"><h2>구경 중 ${spl.length}명</h2><div class="members">${spl.map(x=>`<span>${tokHTML({c:x.c},'sm')}${esc(x.name)}${x.me?' (나)':''}${x.away?' · 연결 끊김':''}</span>`).join('')}</div></div>`;
   if(inGame())h+=`<div class="panel"><h2>기록</h2><ul class="log">${S.log.map(l=>`<li>${esc(l)}</li>`).join('')}</ul></div>`;
@@ -996,7 +1003,7 @@ function detect(){
   cur.skip.forEach((x,i)=>{if(x&&!pv.skip[i]&&!triple)banner(S.players[i],'단속!',`${S.players[i].name} 다음 턴 쉬기`,'#ffcc00');});
   cur.money.forEach((m,i)=>{const d=m-pv.money[i];if(d)setTimeout(()=>floatMoney(i,d),60);});}
 function burst(j,L){const el=tiles[j];if(!el)return;const r=el.getBoundingClientRect();if(!r.width)return;
-  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  if(lite||(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))return;
   const n=L>=3?18:10,cx=r.left+r.width/2,cy=r.top+r.height/2;
   for(let k=0;k<n;k++){const d=document.createElement('div');d.className='spark'+(k%3===0?' star':'');document.body.appendChild(d);
     const ang=Math.PI*2*k/n+Math.random()*.4,dist=(L>=3?70:45)+Math.random()*25;
@@ -1041,7 +1048,7 @@ function chipPoint(i){const el=center.querySelector(`[data-pid="${i}"]`);if(!el)
 function fountainPoint(){const el=tiles[20];if(!el)return null;const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};}
 function flyMoney(t,delay){
   const from=t.f>=0?chipPoint(t.f):t.f===-2?fountainPoint():null,to=t.t>=0?chipPoint(t.t):t.t===-2?fountainPoint():null;if(!from&&!to)return;
-  const n=Math.max(3,Math.min(7,Math.round(t.a/100)+2));const dur=820;
+  const n=lite?2:Math.max(3,Math.min(7,Math.round(t.a/100)+2));const dur=820;
   const start=from||{x:to.x+(Math.random()*40-20),y:to.y-70},end=to||{x:from.x+(Math.random()*30-15),y:from.y-80};
   const lift=Math.min(90,40+Math.abs(end.x-start.x)*.25);
   for(let k=0;k<n;k++){const b=document.createElement('div');b.className='bill';b.innerHTML=BILL;document.body.appendChild(b);
@@ -1211,6 +1218,7 @@ document.addEventListener('click',e=>{
   case 'react':sendReact(b.dataset.e);if(sheetKind==='react')closeSheet();break;
   case 'close':closeSheet();break;
   case 'rules':openSheet('rules');break;
+  case 'lite':lite=!lite;save('nm-lite',lite?'1':'0');document.documentElement.classList.toggle('lite',lite);renderSheet();break;
   case 'settings':confirmEnd=false;confirmLeave=false;openSheet('settings');break;
   case 'leaveask':if(!confirmLeave){confirmLeave=true;renderSheet();setTimeout(()=>{if(confirmLeave){confirmLeave=false;renderSheet();}},5000);}else{confirmLeave=false;leave();}break;
   case 'hlset':hlGroup=+b.dataset.g;renderBoard();clearTimeout(hlTimer);hlTimer=setTimeout(()=>{hlGroup=null;renderBoard();},2500);break;
