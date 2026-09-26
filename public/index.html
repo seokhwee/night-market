@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#141a33"><meta name="apple-mobile-web-app-capable" content="yes"><title>야시장 부자</title>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#141a33"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="야시장 부자"><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><title>야시장 부자</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
@@ -167,6 +167,8 @@ html.lite .tile.lv2 .lamps i:nth-child(1){transform:rotate(-8deg)}html.lite .til
 .short{display:none}
 @container (max-height:430px){
   .tile .pr{display:none}
+  .center .intro,.center .parade{display:none}
+  .center .brand{padding-top:.12em}
 }
 @container (max-width:560px){
   .full{display:none}.short{display:inline}
@@ -667,6 +669,15 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const clean=s=>String(s||'').replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿]/g,'').trim().slice(0,8);
 const sig=s=>s?[s.seq,s.stage,s.turn,s.phase].join('|'):'';
 const online=()=>mode==='host'||mode==='guest';
+let instEvt=null;
+const isApp=()=>{try{return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true}catch(e){return false}};
+const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function installHTML(){if(NET!=='ws'||isApp())return '';
+  if(instEvt)return `<button class="ghost" data-act="install">📲 홈 화면에 앱으로 추가</button>`;
+  if(isIOS())return `<p class="note">📲 Safari 아래쪽 공유 버튼 → <b>홈 화면에 추가</b>를 누르면 앱처럼 쓸 수 있어요</p>`;
+  return '';}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEvt=e;const ie=document.getElementById('inst');if(ie)ie.innerHTML=installHTML();});
+window.addEventListener('appinstalled',()=>{instEvt=null;const ie=document.getElementById('inst');if(ie)ie.innerHTML='';});
 const myId=()=>mode==='host'?'@host':myPeer;
 function myIdx(){if(!S)return -1;if(mode==='local')return S.turn;return S.players.findIndex(p=>p.id===myId());}
 function canAct(){if(!S||S.phase!=='play')return false;if(mode==='local')return true;const p=S.players[S.turn];return !!p&&p.id===myId();}
@@ -764,13 +775,15 @@ center.style.backgroundImage=sceneBG();
 function renderCenter(){
   if(mode==='menu'){
     setCenter('menu',`<div class="parade">${CH.map((c,i)=>`<span class="tok" style="--c:${c.c};animation-delay:${(i*.15).toFixed(2)}s">${c.svg}</span>`).join('')}</div><div class="brand">야시장 부자</div>
-      <p class="sub">멀리 있는 친구들과 각자 폰이나 태블릿으로 노점을 사고팔며 야시장 최고 부자를 가리는 보드게임</p>
+      <p class="sub intro">멀리 있는 친구들과 각자 폰이나 태블릿으로 노점을 사고팔며 야시장 최고 부자를 가리는 보드게임</p>
       <div class="stack">
         <input class="f" id="nick" maxlength="8" placeholder="내 닉네임" autocomplete="off" value="${esc(myName)}">
         <div id="online" class="stack"></div>
         <button class="ghost" data-act="local">한 기기에서 번갈아 하기</button>
+        <div id="inst"></div>
       </div>
 `);
+    const ie=document.getElementById('inst');if(ie)ie.innerHTML=installHTML();
     const on=document.getElementById('online');
     if(roomState==='none'){on.innerHTML=`<p class="note">이 화면에서는 온라인 방을 열 수 없어요. 한 기기에서 번갈아 하기는 가능해요.</p>`;return;}
     const ready=roomState==='ok'&&myPeer;
@@ -1228,6 +1241,7 @@ document.addEventListener('click',e=>{
   case 'react':sendReact(b.dataset.e);if(sheetKind==='react')closeSheet();break;
   case 'close':closeSheet();break;
   case 'rules':openSheet('rules');break;
+  case 'install':if(instEvt){instEvt.prompt();instEvt.userChoice.finally(()=>{instEvt=null;render();});}break;
   case 'lite':lite=!lite;save('nm-lite',lite?'1':'0');document.documentElement.classList.toggle('lite',lite);renderSheet();break;
   case 'settings':confirmEnd=false;confirmLeave=false;openSheet('settings');break;
   case 'leaveask':if(!confirmLeave){confirmLeave=true;renderSheet();setTimeout(()=>{if(confirmLeave){confirmLeave=false;renderSheet();}},5000);}else{confirmLeave=false;leave();}break;
@@ -1275,4 +1289,4 @@ if(NET==='ws'){
 }catch(e){roomState='none';render();}
 })();
 </script>
-</body></html>
+<script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));</script></body></html>

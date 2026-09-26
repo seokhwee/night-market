@@ -1,0 +1,17 @@
+{
+  "name": "야시장 부자",
+  "short_name": "야시장 부자",
+  "description": "멀리 있는 친구들과 각자 폰이나 태블릿으로 하는 야시장 보드게임",
+  "lang": "ko",
+  "start_url": "/?app=1",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#141a33",
+  "theme_color": "#141a33",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -1,6 +1,14 @@
 // 야시장 부자 — realtime room server (Bun). One file: serves the game page and relays per-room presence.
 const HTML: string = await Bun.file(new URL("./public/index.html", import.meta.url)).text();
 
+const STATIC: Record<string, string> = {
+  "/manifest.webmanifest": "application/manifest+json",
+  "/sw.js": "text/javascript; charset=utf-8",
+  "/icon-192.png": "image/png",
+  "/icon-512.png": "image/png",
+  "/apple-touch-icon.png": "image/png",
+};
+
 type Peer = { id: string; presence: Record<string, unknown>; ws: any | null; away: boolean; timer?: ReturnType<typeof setTimeout> };
 const chans = new Map<string, Map<string, Peer>>();
 const pend = new Map<string, ReturnType<typeof setTimeout>>();
@@ -38,6 +46,8 @@ const server = Bun.serve<{ ch: string; id: string }>({
       return Response.json({ host, count: m ? m.size : 0 });
     }
     if (u.pathname === "/health") return new Response("ok");
+    const st = STATIC[u.pathname];
+    if (st) return new Response(Bun.file(new URL("./public" + u.pathname, import.meta.url)), { headers: { "content-type": st, "cache-control": u.pathname === "/sw.js" ? "no-cache" : "public, max-age=86400" } });
     if (u.pathname === "/" || u.pathname === "/index.html")
       return new Response(HTML, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
     return new Response("not found", { status: 404 });
