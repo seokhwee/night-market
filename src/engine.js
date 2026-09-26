@@ -5,11 +5,11 @@ const CD={k:'card',n:'뽑기',d:'카드 한 장'};
 const T=[
  {k:'start',n:'입구',d:'지나면 보너스'},
  S_('붕어빵',60,0),CD,S_('호떡',60,0),{k:'tax',n:'자릿세',amt:100,d:'-100냥'},PK('북문 주차장','북문P'),S_('어묵',100,1),CD,S_('계란빵',100,1),S_('꽈배기',120,1),
- {k:'jail',n:'단속반',d:'구경만 해요'},
+ {k:'jail',n:'단속반',d:'들어오면 한 턴 쉼'},
  S_('떡볶이',140,2),{k:'busk',n:'버스킹',d:'모두에게 20씩'},S_('순대',140,2),S_('튀김',160,2),PK('동문 주차장','동문P'),S_('김밥',180,3),CD,S_('핫바',180,3),S_('소떡소떡',200,3,'소떡'),
  {k:'rest',n:'분수광장',d:'세금 환급'},
  S_('닭꼬치',220,4),{k:'coin',n:'동전 던지기',d:'2배·3배·5배'},S_('핫도그',220,4),S_('회오리감자',240,4,'회오리'),PK('남문 주차장','남문P'),S_('군고구마',260,5,'고구마'),S_('츄러스',260,5),{k:'tax',n:'전기세',amt:150,d:'-150냥'},S_('와플',280,5),
- {k:'gojail',n:'단속 걸림',d:'단속반으로 · 한 턴 쉼'},
+ {k:'travel',n:'세계여행',d:'원하는 칸으로'},
  S_('탕후루',300,6),S_('버블티',300,6),CD,S_('크레페',320,6),PK('서문 주차장','서문P'),CD,S_('타코야끼',350,7,'타코'),{k:'tax',n:'가스비',amt:120,d:'-120냥'},S_('스테이크 큐브',400,7,'스테이크')
 ];
 const CARDS=[
@@ -28,7 +28,7 @@ const CARDS=[
  {t:'분수광장으로 산책 가요',go:20}
 ];
 const N=T.length;
-const CFG={coinBets:[100,200,300],coinMult:[2,3,5],sellMult:.5,start:1500,orderBonus:100,pass:200,rentMult:1.0,rounds:100,takeMult:1.5,parkRent:[25,50,100,200],exCost:.5,exMult:[1,1.5,2,2.5],exMax:3};
+const CFG={coinBets:[100,200,300],coinMult:[2,3,5],sellMult:.5,start:1500,orderBonus:100,pass:200,rentMult:1.0,rounds:100,takeMult:1.5,parkRent:[150,300,450,700],exCost:.5,exMult:[1,1.5,2,2.5],exMax:3};
 const UNIT='냥';
 const GN=['갈색','빨강','주황','겨자','초록','청록','파랑','보라'];
 const TURN_SEC=30;
@@ -79,8 +79,8 @@ function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
     break;}
   case 'card':s.stage='draw';s.drawDepth=depth||0;s.card='';addLog(s,`${p.name}: 뽑기 칸! 제비를 하나 뽑아요`);break;
   case 'tax':addLog(s,`${p.name}: ${t.n} ${t.amt}${UNIT} 냈어요`);pay(s,i,-1,t.amt);break;
-  case 'gojail':jail(s,i,p.pos);addLog(s,`${p.name}: 단속에 걸려 단속반으로! 다음 턴은 쉬어요`);break;
-  case 'jail':addLog(s,`${p.name}: 단속반을 구경만 해요`);break;
+  case 'jail':jail(s,i,10);addLog(s,`${p.name}: 단속반에 들어왔어요! 다음 턴은 쉬어요`);break;
+  case 'travel':s.stage='travel';addLog(s,`${p.name}: 세계여행! 가고 싶은 칸을 골라요`);break;
   case 'busk':{let n=0;s.players.forEach((q,j)=>{if(j!==i&&!q.out){pay(s,j,i,20);n++}});addLog(s,`${p.name}: 버스킹 공연으로 ${n*20}${UNIT} 모았어요`);break;}
   case 'rest':if(s.pot>0){const w=s.pot;s.pot=0;p.money+=w;tx(s,-2,i,w);s.potN=(s.potN||0)+1;s.potWin={n:s.potN,i,a:w};addLog(s,`${p.name}: 분수광장 세금 환급! 모인 ${w}${UNIT}을 모두 받아요`);}
     else addLog(s,`${p.name}: 분수광장에 왔지만 모인 세금이 없어요`);break;
@@ -89,7 +89,7 @@ function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
 }
 function jail(s,i,from){const p=s.players[i];p.pos=10;p.skip=true;s.jailN=(s.jailN||0)+1;s.jailFx={n:s.jailN,i,from};}
 function drawCard(s,k){const i=s.turn,p=s.players[i],depth=s.drawDepth||0;const ci=Math.floor(Math.random()*CARDS.length),c=CARDS[ci];
-  s.card=c.t;s.cardId=ci;s.cardN=(s.cardN||0)+1;s.cardSlip=k;s.stage='end';addLog(s,`${p.name} 뽑기: ${c.t}`);
+  s.card=c.t;s.cardId=ci;s.cardN=(s.cardN||0)+1;s.cardSlip=k;s.lastCard={n:s.cardN,t:c.t,id:ci,k,who:i};s.stage='end';addLog(s,`${p.name} 뽑기: ${c.t}`);
   if(c.m>0){p.money+=c.m;tx(s,-1,i,c.m);}else if(c.m<0)pay(s,i,-1,-c.m);
   if(c.inspect){const n=T.reduce((a,x,j)=>a+(x.k==='s'&&s.owners[j]===i?1:0),0);if(n)pay(s,i,-1,n*c.inspect);addLog(s,`${p.name}: 위생 점검으로 ${n*c.inspect}${UNIT} 냈어요`);}
   if(c.all)s.players.forEach((q,j)=>{if(j!==i&&!q.out)pay(s,j,i,c.all)});
@@ -168,16 +168,25 @@ function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players
     if(o>=0&&o!==i&&p.money>=pr&&!setOwned(s,t.g,o)&&lvOf(s,p.pos)<CFG.exMax){p.money-=pr;s.players[o].money+=pr;tx(s,i,o,pr);s.owners[p.pos]=i;
       addLog(s,`${p.name}: ${s.players[o].name}의 ${t.n}을(를) ${pr}${UNIT}에 인수!`+(setOwned(s,t.g,i)?' · 세트 완성!':''));}
     s.stage='end';return true;}
-  if(s.stage==='draw'&&typeof a==='string'&&/^draw(:[0-9])?$/.test(a)){drawCard(s,a.length>5?+a.slice(5):Math.floor(Math.random()*7));return true;}
+  if(s.stage==='draw'&&typeof a==='string'&&/^draw(:[0-9])?$/.test(a)){drawCard(s,a.length>5?Math.min(4,+a.slice(5)):Math.floor(Math.random()*5));return true;}
+  if(s.stage==='travel'&&typeof a==='string'&&a.indexOf('go:')===0){const j=parseInt(a.slice(3),10);if(!(j>=0&&j<N)||j===p.pos)return false;
+    const from=p.pos,steps=(j-from+N)%N;s.travN=(s.travN||0)+1;s.travFx={n:s.travN,i,from,to:j};
+    addLog(s,`${p.name}: ${T[j].n}(으)로 여행 가요`+(from+steps>=N?' · 입구를 지나요':''));moveBy(s,i,steps);land(s,0);return true;}
+  if(a==='pass'&&s.stage==='travel'){addLog(s,`${p.name}: 여행은 다음에 갈래요`);s.stage='end';return true;}
   if(a==='pass'&&(s.stage==='buy'||s.stage==='take')){addLog(s,`${p.name}: 그냥 지나가요`);s.stage='end';return true;}
   if(a==='end'&&s.stage==='end'){nextTurn(s);return true;}
   return false;}
 function startGame(s){const r6=()=>1+Math.floor(Math.random()*6);
-  const rl=s.players.map(p=>({p,d:[r6(),r6()],t:Math.random()}));
-  const sorted=rl.slice().sort((a,b)=>(b.d[0]+b.d[1])-(a.d[0]+a.d[1])||a.t-b.t);const ps=sorted.map(x=>x.p);
+  const rl=s.players.map(p=>({p,d:[r6(),r6()],re:[]}));
+  /* 동점이면 동점자끼리만 다시 굴려 순서를 정해요 */
+  const rank=(grp,r)=>{const val=x=>{const d=r===0?x.d:x.re[r-1];return d[0]+d[1];};
+    const by={};grp.forEach(x=>{(by[val(x)]=by[val(x)]||[]).push(x)});
+    return Object.keys(by).map(Number).sort((a,b)=>b-a).flatMap(v=>{const g=by[v];if(g.length===1||r>=8)return g;
+      g.forEach(x=>{while(x.re.length<r)x.re.push(null);x.re[r]=[r6(),r6()];});return rank(g,r+1);});};
+  const sorted=rank(rl,0);const ps=sorted.map(x=>x.p);
   const cmap={};s.players.forEach((p,i)=>cmap[p.id]=i);
   s.players=ps.map((p,i)=>({id:p.id,name:p.name,c:(p.ch!=null?p.ch:cmap[p.id]),pos:0,money:CFG.start+i*CFG.orderBonus,skip:false,out:false}));
-  s.ord=rl.map(x=>({i:sorted.indexOf(x),d:x.d}));s.gid=Math.random().toString(36).slice(2,8);
+  s.ord=rl.map(x=>({i:sorted.indexOf(x),d:x.d,re:x.re}));s.gid=Math.random().toString(36).slice(2,8);
   s.owners=Array(N).fill(-1);s.lv=Array(N).fill(0);s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.tx=[];s.txn=0;s.pot=0;s.potN=0;s.potWin=null;s.phase='play';s.turn=0;s.round=1;s.stage='roll';s.seq=0;s.dice=[0,0];s.log=[];s.card='';s.winner=null;s.endReason=null;s.dbl=0;s.extra=false;s.lastDbl=0;
   addLog(s,`선 뽑기: ${s.players.map((p,k)=>p.name+'('+(sorted[k].d[0]+sorted[k].d[1])+')').join(' → ')}. 뒤 순서일수록 시작 자금 +${CFG.orderBonus}`);}
 function forfeit(s,i){if(s.players[i].out)return;goBroke(s,i,'님이 나가서 기권 처리됐어요');if(s.phase==='play'&&s.turn===i){s.stage='end';nextTurn(s);}}
