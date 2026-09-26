@@ -599,19 +599,20 @@ function renderTokens(){
     if(el.lastChild.dataset.h!==h){el.lastChild.innerHTML=h;el.lastChild.dataset.h=h;}});}
 let stepper=null;
 const DICE_MS=1300,CARD_MS=1700,CUFF_MS=1500;
-const TRAV_MS=1400;let travSel=null,travSeen=0,travPend=null;
+const TRAV_MS=1400;let travSel=null,travSeen=0,travPend=null,tpSeen=0,tpPend=null;
 let fxUntil=0,fxT=null,fxGid=null,diceSeen=null,cardSeen=0,jailSeen=0,jailPend=null,diceLand=0,cardAt=0,hideTok=null;
 const holding=()=>Date.now()<fxUntil;
 const reduceMo=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 function hold(ms){fxUntil=Math.max(fxUntil,Date.now()+ms);clearTimeout(fxT);fxT=setTimeout(()=>{fxT=null;render();},fxUntil-Date.now()+30);}
 function fxDetect(){
   if(!inGame()||S.phase!=='play'){if(!inGame()){fxGid=null;jailPend=null;hideTok=null;}return;}
-  if(fxGid!==S.gid){fxGid=S.gid;diceSeen=S.seq;cardSeen=S.cardN||0;jailSeen=S.jailN||0;travSeen=S.travN||0;return;}
+  if(fxGid!==S.gid){fxGid=S.gid;diceSeen=S.seq;cardSeen=S.cardN||0;jailSeen=S.jailN||0;travSeen=S.travN||0;tpSeen=S.tpN||0;return;}
+  if((S.tpN||0)!==tpSeen){tpSeen=S.tpN||0;const f=S.tpFx,p=f&&S.players[f.i];if(p&&!p.out)tpPend={id:p.id,to:f.to};}
   if((S.travN||0)!==travSeen){travSeen=S.travN||0;const f=S.travFx,p=f&&S.players[f.i];if(p&&!p.out)travPend={id:p.id,from:f.from,to:f.to,started:false};}
   if(S.seq!==diceSeen){const was=diceSeen;diceSeen=S.seq;if(S.seq>was&&S.dice[0]&&!reduceMo()){diceLand=Date.now()+DICE_MS;hold(DICE_MS+200);requestAnimationFrame(()=>throwDice(S.dice[0],S.dice[1]));}}
   if((S.cardN||0)!==cardSeen){cardSeen=S.cardN||0;cardAt=Date.now();if(!reduceMo())hold(CARD_MS);}
   if((S.jailN||0)!==jailSeen){jailSeen=S.jailN||0;const f=S.jailFx,p=f&&S.players[f.i];if(p&&!p.out)jailPend={id:p.id,from:f.from,started:false};}}
-function tgt(p){if(travPend&&travPend.id===p.id)return travPend.from;return jailPend&&jailPend.id===p.id&&!jailPend.started?jailPend.from:p.pos;}
+function tgt(p){if(tpPend&&tpPend.id===p.id)return view[p.id];if(travPend&&travPend.id===p.id)return travPend.from;return jailPend&&jailPend.id===p.id&&!jailPend.started?jailPend.from:p.pos;}
 const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const FACE_ROT={1:[0,0],6:[0,180],3:[0,-90],4:[0,90],2:[-90,0],5:[90,0]};
 function throwDice(a,b){
@@ -667,6 +668,7 @@ function animateTokens(){
   if(!inGame()){for(const k in view)delete view[k];return;}
   S.players.forEach(p=>{if(view[p.id]==null)view[p.id]=p.pos;});
   if(holding())return;
+  if(tpPend){const p=S.players.find(q=>q.id===tpPend.id);if(p){const from=view[p.id];if(from!=null)burst(from,1);view[p.id]=tpPend.to;renderTokens();burst(tpPend.to,1);}tpPend=null;setTimeout(render,0);}
   if(travPend){const p=S.players.find(q=>q.id===travPend.id);
     if(!p||p.out||S.phase!=='play'){travPend=null;hideTok=null;}
     else if(travPend.started){view[p.id]=travPend.to;travPend=null;hideTok=null;renderTokens();burst(view[p.id],1);setTimeout(render,0);}
@@ -689,7 +691,7 @@ let busySince=0;
 setInterval(()=>{if(!inGame()||!isMoving()){busySince=0;return;}if(!busySince){busySince=Date.now();return;}
   if(Date.now()-busySince>9000&&!holding()){busySince=0;jailPend=null;travPend=null;hideTok=null;if(stepper){clearInterval(stepper);stepper=null;}S.players.forEach(p=>view[p.id]=p.pos);render();}},1000);
 function tokensMoving(){return !!(inGame()&&S.players.some(p=>!p.out&&view[p.id]!=null&&view[p.id]!==p.pos));}
-function isMoving(){return holding()||!!jailPend||!!travPend||tokensMoving();}
+function isMoving(){return holding()||!!jailPend||!!travPend||!!tpPend||tokensMoving();}
 
 /* ---------- center ---------- */
 const IC={

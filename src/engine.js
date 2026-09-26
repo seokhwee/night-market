@@ -26,7 +26,7 @@ const CARDS=[
  {t:'단속반에 걸렸어요. 한 턴 쉼',jail:true},
  {t:'뒤로 3칸',step:-3},
  {t:'분수광장으로 산책 가요',go:20},
- {t:'맛집탐방 칸으로 이동해요',go:30}
+ {t:'맛집탐방 칸으로 순간이동!',tp:30}
 ];
 const N=T.length;
 const CFG={coinBets:[100,200,300],coinMult:[2,3,5],sellMult:.5,start:1500,orderBonus:100,pass:200,rentMult:1.0,rounds:100,takeMult:1.5,parkRent:[150,300,450,700],exCost:.5,exMult:[1,1.5,2,2.5],exMax:3,loanRate:.2,sellSec:120};
@@ -114,7 +114,8 @@ function drawCard(s,k){const i=s.turn,p=s.players[i],depth=s.drawDepth||0;const 
   if(c.all)s.players.forEach((q,j)=>{if(j!==i&&!q.out)pay(s,j,i,c.all)});
   if(c.jail)jail(s,i,p.pos);
   if(c.step!=null){moveBy(s,i,c.step);if(!depth&&!p.out)land(s,1);}
-  if(c.go!=null){moveBy(s,i,(c.go-p.pos+N)%N||N);if(!depth&&!p.out)land(s,1);}}
+  if(c.go!=null){moveBy(s,i,(c.go-p.pos+N)%N||N);if(!depth&&!p.out)land(s,1);}
+  if(c.tp!=null&&!p.out){p.pos=c.tp;s.tpN=(s.tpN||0)+1;s.tpFx={n:s.tpN,i,to:c.tp};if(!depth)land(s,1);} /* 순간이동: 입구 통과·바퀴 수 없음 */}
 function cardKind(ci){const c=CARDS[ci];if(!c)return '';if(c.jail||c.inspect||c.m<0)return 'bad';if(c.m>0||c.all)return 'good';return 'move';}
 function finish(s){s.phase='over';s.endReason=s.endReason||'rounds';let best=-1,bw=-1;s.players.forEach((p,i)=>{if(!p.out){const w=worth(s,i);if(w>bw){bw=w;best=i}}});s.winner=best;}
 function nextTurn(s){if(s.phase!=='play')return;const n=s.players.length,prev=s.turn;let k=0;
