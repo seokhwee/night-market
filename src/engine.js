@@ -60,12 +60,13 @@ function expandable(s,i){const a=[];T.forEach((t,j)=>{if(canExpand(s,i,j))a.push
 function stallsOf(s,i){return s.owners.filter(o=>o===i).length;}
 function addLog(s,t){s.log.unshift(t);s.log=s.log.slice(0,6);s.msg=t;}
 function alive(s){return s.players.filter(p=>!p.out);}
-/* 은행 대출: 한 사람당 한 게임에 한 번, 부족한 만큼 빌리고 20% 더 갚아요. 입구를 지날 때 받는 돈으로 자동 상환 */
-function loanRepay(amt){return Math.ceil(amt*(1+CFG.loanRate)/10)*10;}
-function takeLoan(s,i,amt,auto){const p=s.players[i];if(p.loanUsed||amt<=0)return false;p.loanUsed=true;p.loan=loanRepay(amt);p.money+=amt;tx(s,-1,i,amt);
-  addLog(s,`${p.name}: 은행에서 ${amt}${UNIT} 대출${auto?'(자동)':''} · 갚을 돈 ${p.loan}${UNIT}`);return true;}
-function owed(s){return (s.owe||[]).reduce((a,o)=>a+o.amt,0);}
-function worth(s,i){let w=s.players[i].money-(i===s.turn?owed(s):0)-(s.players[i].loan||0);s.owners.forEach((o,j)=>{if(o===i)w+=T[j].p+exCost(j)*lvOf(s,j)});return w;}
+/* 은행 대출: 한 사람당 한 게임에 한 번, 모자란 만큼 받고 갚지 않아도 돼요 */
+function takeLoan(s,d,auto){const p=s.players[d],amt=owed(s,d);if(p.loanUsed||amt<=0)return false;p.loanUsed=true;p.money+=amt;tx(s,-1,d,amt);
+  addLog(s,`${p.name}: 은행 대출 ${amt}${UNIT}${auto?' (시간이 지나 자동)':''} · 갚지 않아도 돼요`);return true;}
+/* 빚: {from 낼 사람, to 받을 사람(-1이면 분수광장), amt} */
+function debtorOf(s){return s.stage==='sell'&&s.debtor!=null?s.debtor:s.turn;}
+function owed(s,d){if(d==null)d=debtorOf(s);return (s.owe||[]).filter(o=>o.from===d).reduce((a,o)=>a+o.amt,0);}
+function worth(s,i){let w=s.players[i].money-owed(s,i);s.owners.forEach((o,j)=>{if(o===i)w+=T[j].p+exCost(j)*lvOf(s,j)});return w;}
 function checkOver(s){const al=alive(s);if(s.phase==='play'&&al.length<=1){s.phase='over';s.winner=al.length?s.players.indexOf(al[0]):-1;s.endReason='bankrupt';}}
 function goBroke(s,i,why){const p=s.players[i];p.money=0;p.out=true;if(s.lv)s.owners.forEach((o,j)=>{if(o===i)s.lv[j]=0});s.owners=s.owners.map(o=>o===i?-1:o);addLog(s,`${p.name} ${why}`);checkOver(s);}
 function sellValue(s,j){return Math.round((T[j].p+(T[j].k==='s'?exCost(j)*lvOf(s,j):0))*CFG.sellMult/10)*10;}
@@ -73,18 +74,18 @@ function sellable(s,i){const a=[];s.owners.forEach((o,j)=>{if(o===i)a.push(j)});
 function assetValue(s,i){return sellable(s,i).reduce((a,j)=>a+sellValue(s,j),0);}
 function tx(s,f,t,a){if(!(a>0))return;s.txn=(s.txn||0)+1;s.tx=(s.tx||[]).concat([{n:s.txn,f,t,a}]).slice(-8);}
 function sellTile(s,i,j){const p=s.players[i];const v=sellValue(s,j);p.money+=v;tx(s,-1,i,v);s.owners[j]=-1;if(s.lv)s.lv[j]=0;return v;}
-function settleOwe(s){const p=s.players[s.turn];while(s.owe&&s.owe.length&&p.money>0){const o=s.owe[0];const x=Math.min(o.amt,p.money);p.money-=x;if(o.to<0)s.pot=(s.pot||0)+x;tx(s,s.turn,o.to<0?-2:o.to,x);o.amt-=x;if(o.to>=0&&s.players[o.to])s.players[o.to].money+=x;if(o.amt<=0)s.owe.shift();}}
-function pay(s,from,to,amt){const a=s.players[from];if(a.out)return;
-  if(a.money<amt&&s.phase==='play'){
-    if(from===s.turn&&(sellable(s,from).length||!a.loanUsed)){const paid=a.money;a.money=0;if(to>=0)s.players[to].money+=paid;else s.pot=(s.pot||0)+paid;tx(s,from,to<0?-2:to,paid);s.owe=s.owe||[];s.owe.push({to,amt:amt-paid});return;}
-    if(from!==s.turn){const js=sellable(s,from).sort((x,y)=>sellValue(s,x)-sellValue(s,y));const sold=[];
-      while(a.money<amt&&js.length){const j=js.shift();sellTile(s,from,j);sold.push(T[j].n);}
-      if(sold.length)addLog(s,`${a.name}: 돈이 모자라 ${sold.join(', ')}을(를) 자동으로 팔았어요`);
-      if(a.money<amt&&!a.loanUsed)takeLoan(s,from,amt-a.money,true);}}
-  const paid=Math.min(amt,a.money);a.money-=amt;if(to<0)s.pot=(s.pot||0)+paid;tx(s,from,to<0?-2:to,paid);
-  if(to>=0)s.players[to].money+=paid;if(a.money<0)goBroke(s,from,'파산! 가게를 모두 내놓았어요');}
+function credit(s,from,to,x){if(!(x>0))return;if(to<0)s.pot=(s.pot||0)+x;else if(s.players[to])s.players[to].money+=x;tx(s,from,to<0?-2:to,x);}
+function settleOwe(s,d){const p=s.players[d];for(const o of (s.owe||[])){if(o.from!==d||o.amt<=0)continue;if(p.money<=0)break;const x=Math.min(o.amt,p.money);p.money-=x;credit(s,d,o.to,x);o.amt-=x;}
+  s.owe=(s.owe||[]).filter(o=>o.amt>0);}
+/* 돈이 모자라면 가진 현금을 먼저 내고, 나머지는 빚으로 남겨 그 사람이 직접 해결해요 (차례가 아니어도) */
+function pay(s,from,to,amt){const a=s.players[from];if(a.out||!(amt>0))return;
+  if(a.money>=amt||s.phase!=='play'){const x=Math.min(amt,Math.max(0,a.money));a.money-=x;credit(s,from,to,x);return;}
+  const paid=Math.max(0,a.money);a.money=0;credit(s,from,to,paid);s.owe=s.owe||[];s.owe.push({from,to,amt:amt-paid});}
+/* 파산: 못 낸 돈은 은행이 대신 채워 받을 사람에게 전액 주고, 파산한 사람의 가게는 모두 빈 땅이 돼요 */
+function bankrupt(s,d,why){(s.owe||[]).filter(o=>o.from===d).forEach(o=>{if(o.to<0)s.pot=(s.pot||0)+o.amt;else if(s.players[o.to]&&!s.players[o.to].out)s.players[o.to].money+=o.amt;tx(s,-1,o.to<0?-2:o.to,o.amt);});
+  s.owe=(s.owe||[]).filter(o=>o.from!==d&&o.to!==d);goBroke(s,d,why);}
 function moveBy(s,i,steps){const p=s.players[i];if(steps>0&&p.pos+steps>=N){p.money+=CFG.pass;tx(s,-1,i,CFG.pass);p.lap=(p.lap||1)+1;addLog(s,`${p.name}: 입구 통과 +${CFG.pass} · ${p.lap}바퀴째`);
-    if(p.loan>0){const r=Math.min(p.loan,CFG.pass);p.money-=r;p.loan-=r;tx(s,i,-1,r);addLog(s,`${p.name}: 대출 ${r}${UNIT} 갚았어요`+(p.loan>0?` · 남은 빚 ${p.loan}${UNIT}`:' · 대출을 다 갚았어요!'));}}p.pos=((p.pos+steps)%N+N)%N;}
+}p.pos=((p.pos+steps)%N+N)%N;}
 function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
   switch(t.k){
   case 's':case 'park':{const o=s.owners[p.pos];
@@ -123,12 +124,14 @@ function afterAct(s){if(s.phase==='play'&&s.stage==='end'&&s.extra){const p=s.pl
   if(p.out||p.skip){s.dbl=0;return;}s.stage='roll';s.card='';s.msg=`${p.name}: 더블! 한 번 더 굴려요`+(s.dbl>=2?' (한 번 더 나오면 단속!)':'');}}
 function resolvePend(s){if(s.phase!=='play'||s.stage!=='end'||!s.exPend)return;s.exPend=false;const p=s.players[s.turn];if(p.out)return;
   if(expandable(s,s.turn).length){s.stage='expandAny';s.msg=`${p.name}: 입구 통과 보너스! 확장할 노점을 하나 골라요`;}}
-function checkDebt(s){if(s.phase!=='play'||!s.owe||!s.owe.length)return;const p=s.players[s.turn];
-  if(p.out){s.owe=[];return;}
-  if(owed(s)<=0){s.owe=[];return;}
-  if(!sellable(s,s.turn).length&&p.loanUsed){s.owe=[];goBroke(s,s.turn,'파산! 팔 가게도 없어요');if(s.phase==='play')s.stage='end';return;}
-  if(s.stage!=='sell'){s.resume=s.stage;s.stage='sell';s.msg=`${p.name}: 현금이 모자라요! 가게를 팔아 ${owed(s)}${UNIT}을 마련해야 해요`;}}
-function afterSell(s){const p=s.players[s.turn];let st=s.resume||'end';s.resume=null;
+function checkDebt(s){if(s.phase!=='play')return;s.owe=(s.owe||[]).filter(o=>o.amt>0&&s.players[o.from]&&!s.players[o.from].out);
+  while(s.owe.length&&s.phase==='play'){const d=s.owe[0].from,p=s.players[d];
+    if(!sellable(s,d).length&&p.loanUsed){bankrupt(s,d,'파산! 팔 가게도 대출도 없어요 · 못 낸 돈은 은행이 대신 냈어요');continue;}
+    if(s.stage!=='sell'){s.resume=s.stage;s.stage='sell';}s.debtor=d;s.msg=`${p.name}: 현금이 모자라요! ${owed(s,d)}${UNIT}을 마련해야 해요`;return;}
+  if(s.phase==='play'&&s.stage==='sell')afterSell(s);
+  else if(s.phase==='play'&&s.players[s.turn].out)nextTurn(s);}
+function afterSell(s){const p=s.players[s.turn];let st=s.resume||'end';s.resume=null;s.debtor=null;
+  if(p.out){s.stage='end';nextTurn(s);return;}
   if(st==='take'&&!(p.money>=takePrice(p.pos,s)&&s.owners[p.pos]>=0&&s.owners[p.pos]!==s.turn))st='end';
   if(st==='buy'&&!(s.owners[p.pos]<0&&p.money>=T[p.pos].p))st='end';
   if((st==='expand'&&!exOptions(s,s.turn,s.exTarget).length)||(st==='expandAny'&&!expandable(s,s.turn).length))st='end';
@@ -156,18 +159,16 @@ function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players
     if(a==='cash'){const m=CFG.coinMult[c.streak-1],w=c.bet*m;p.money+=w;tx(s,-1,i,w);c.done='cash';addLog(s,`${p.name}: ${m}배로 멈췄어요! +${w}${UNIT}`);s.stage='end';return true;}
     if(a==='again'){s.stage='coinPick';addLog(s,`${p.name}: 한 번 더! ${CFG.coinMult[c.streak]}배 도전`);return true;}
     return false;}
-  if(s.stage==='sell'){
-    if(typeof a==='string'&&a.indexOf('sell:')===0){const j=parseInt(a.slice(5),10);if(!(j>=0&&j<N)||s.owners[j]!==i)return false;
-      const v=sellTile(s,i,j);settleOwe(s);addLog(s,`${p.name}: ${T[j].n}을(를) ${v}${UNIT}에 팔았어요`+(owed(s)>0?` · 아직 ${owed(s)}${UNIT} 부족`:' · 빚을 다 갚았어요'));
-      if(owed(s)<=0){s.owe=[];afterSell(s);}else if(!sellable(s,i).length&&p.loanUsed){s.owe=[];goBroke(s,i,'파산! 가게를 다 팔아도 모자라요');if(s.phase==='play')s.stage='end';}
-      return true;}
-    if(a==='loan'){if(p.loanUsed||owed(s)<=0)return false;takeLoan(s,i,owed(s));settleOwe(s);s.owe=[];afterSell(s);return true;}
-    if(a==='autosell'){const js=sellable(s,i).sort((x,y)=>sellValue(s,x)-sellValue(s,y));const sold=[];
-      while(owed(s)>0&&js.length){const j=js.shift();sellTile(s,i,j);settleOwe(s);sold.push(T[j].n);}
-      if(sold.length)addLog(s,`${p.name}: 시간이 지나 ${sold.join(', ')}을(를) 자동으로 팔았어요`);
-      if(owed(s)>0&&!p.loanUsed){takeLoan(s,i,owed(s),true);settleOwe(s);}
-      if(owed(s)<=0){s.owe=[];afterSell(s);}else{s.owe=[];goBroke(s,i,'파산! 가게를 다 팔아도 모자라요');if(s.phase==='play')s.stage='end';}return true;}
-    if(a==='giveup'){s.owe=[];goBroke(s,i,'님이 파산을 선언했어요');if(s.phase==='play')s.stage='end';return true;}
+  if(s.stage==='sell'){const d=debtorOf(s),q=s.players[d];
+    if(typeof a==='string'&&a.indexOf('sell:')===0){const j=parseInt(a.slice(5),10);if(!(j>=0&&j<N)||s.owners[j]!==d)return false;
+      const v=sellTile(s,d,j);settleOwe(s,d);addLog(s,`${q.name}: ${T[j].n}을(를) ${v}${UNIT}에 팔았어요`+(owed(s,d)>0?` · 아직 ${owed(s,d)}${UNIT} 부족`:' · 다 냈어요'));return true;}
+    if(a==='loan'){if(q.loanUsed||owed(s,d)<=0)return false;takeLoan(s,d);settleOwe(s,d);return true;}
+    if(a==='autosell'){if(!q.loanUsed)takeLoan(s,d,true);settleOwe(s,d);
+      const js=sellable(s,d).sort((x,y)=>sellValue(s,x)-sellValue(s,y));const sold=[];
+      while(owed(s,d)>0&&js.length){const j=js.shift();sellTile(s,d,j);settleOwe(s,d);sold.push(T[j].n);}
+      if(sold.length)addLog(s,`${q.name}: 시간이 지나 ${sold.join(', ')}을(를) 자동으로 팔았어요`);
+      if(owed(s,d)>0)bankrupt(s,d,'파산! 못 낸 돈은 은행이 대신 냈어요');return true;}
+    if(a==='giveup'){bankrupt(s,d,'님이 파산을 선언했어요 · 못 낸 돈은 은행이 대신 냈어요');return true;}
     return false;}
   if(a==='pass'&&(s.stage==='expand'||s.stage==='expandAny')){addLog(s,`${p.name}: 확장하지 않았어요`);s.stage='end';s.exTarget=null;return true;}
   if(a==='roll'&&s.stage==='roll'){s.seq++;s.card='';s.lastDbl=0;s.exPend=false;
