@@ -36,7 +36,7 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 /* board */
 .boardwrap{width:100%;height:100%}
 .board{container-type:size;display:grid;grid-template-columns:1.45fr repeat(9,minmax(0,1fr)) 1.45fr;grid-template-rows:1.45fr repeat(9,minmax(0,1fr)) 1.45fr;width:100%;height:100%;gap:2px;background:#0c1026;padding:3px;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.35);position:relative}
-.tile{--ts:clamp(14px,3.6cqmin,34px);position:relative;background-color:var(--tb,#283462);background-image:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,0) 40%,rgba(0,0,0,.18));color:#fff;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;min-width:0;min-height:0;cursor:pointer;border:0;padding:0;text-align:left}
+.tile{--ts:clamp(17px,4.4cqmin,42px);position:relative;background-color:var(--tb,#283462);background-image:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,0) 40%,rgba(0,0,0,.18));color:#fff;border-radius:4px;overflow:hidden;display:flex;flex-direction:column;min-width:0;min-height:0;cursor:pointer;border:0;padding:0;text-align:left}
 .tile:focus-visible{outline:2px solid #fff;outline-offset:1px;z-index:2}
 .tile.k-s{--tb:var(--g)}
 .tile .band{height:13%;flex:none;display:none;position:relative}
@@ -46,9 +46,9 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .tile.corner .ico{width:clamp(18px,5.2cqmin,50px);right:7%;bottom:7%}
 .tile .nm{font-weight:700;font-size:clamp(8px,min(1.05cqw,2.1cqh),15px);line-height:1.12;padding:3px 2px 0 3px;word-break:keep-all;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;position:relative;z-index:1}
 .tile .pr{font-size:clamp(7px,min(.85cqw,1.7cqh),12.5px);color:rgba(255,255,255,.78);padding:1px 3px 0;font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap;position:relative;z-index:1}
-.tile.k-card{--tb:#9c2567}
+.tile.k-card{--tb:#873a65}
 .tile.k-card::after{content:"?";position:absolute;right:4%;bottom:0;font-family:var(--display);font-size:clamp(14px,3.4cqmin,34px);line-height:1;color:rgba(255,255,255,.28)}
-.tile.k-park{--tb:#455a64}
+.tile.k-park{--tb:#4a5860}
 .tile.k-park .band{display:block;background:repeating-linear-gradient(90deg,#1c262b 0 5px,#e9eef0 5px 8px)}
 .tile.k-tax,.tile.k-gojail{--tb:#241818}
 .tile.k-tax .band,.tile.k-gojail .band{display:block;background:repeating-linear-gradient(-45deg,#ffcc00 0 4px,#16110a 4px 8px)}
@@ -56,7 +56,7 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .tile.k-tax .pr,.tile.k-gojail .pr{color:#ffb4a8;font-weight:700}
 .tile .warn{position:absolute;right:3%;bottom:4%;width:clamp(11px,2.6cqmin,24px);height:auto;z-index:1}
 .tile.corner .warn{width:clamp(20px,5.2cqmin,50px);right:7%;bottom:7%}
-.tile.corner{--ts:clamp(16px,3.8cqmin,36px)}
+.tile.corner{--ts:clamp(19px,4.6cqmin,44px)}
 .tile.corner{--tb:#283462}
 .tile.k-gojail.corner{--tb:#241818}
 .tile.corner .nm{font-family:var(--display);font-weight:400;font-size:clamp(9px,2.1cqmin,18px);padding:4px 3px 0 4px;white-space:normal;letter-spacing:0;color:var(--lantern)}
@@ -145,18 +145,18 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .tile.lv1 .band,.tile.lv2 .band{filter:saturate(1.4) brightness(1.15)}
 .tile.lv1{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 5px rgba(255,210,77,.35),inset 0 0 12px rgba(0,0,0,.25)}
 .tile.lv2{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px rgba(255,210,77,.75),inset 0 0 14px rgba(255,200,60,.35)}
-.tile.lv2::before,.tile.lv3::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+.tile.lv2::before,.tile.lv3::before{will-change:opacity;content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
   background-image:radial-gradient(circle,rgba(255,255,255,.9) 0 1px,transparent 1.6px),radial-gradient(circle,rgba(255,236,160,.8) 0 1px,transparent 1.6px);
   background-size:17px 15px,23px 19px;background-position:3px 5px,11px 2px;animation:twk 2.2s ease-in-out infinite alternate;opacity:.5}
 @keyframes twk{to{opacity:.95;background-position:5px 4px,9px 4px}}
-.tile.lv3{z-index:1;box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px #ffd24d,inset 0 0 22px rgba(255,210,77,.55),0 0 10px 2px rgba(255,210,77,.55);animation:halo 1.8s ease-in-out infinite alternate}
+.tile.lv3{z-index:1;box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px #ffd24d,inset 0 0 22px rgba(255,210,77,.55),0 0 14px 3px rgba(255,210,77,.65)}
 @keyframes halo{to{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 6px #fff1a8,inset 0 0 26px rgba(255,210,77,.75),0 0 18px 5px rgba(255,210,77,.8)}}
 .tile.lv3 .band{background:repeating-linear-gradient(90deg,#ffe27a 0 12.5%,#c98e00 12.5% 25%)!important;filter:none}
 .tile.lv3 .band::after{background:radial-gradient(circle at 50% 0,#ffe27a 0 60%,transparent 64%) 0 0/12.5% 100% repeat-x!important}
 .tile.lv3::before{opacity:.8}
 .tile .lvl.star3{background:linear-gradient(180deg,#fff1a8,#ffc21a);color:#5a3a00;padding:1px 7px;border-radius:3px;top:1px;box-shadow:0 2px 5px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,94% 50%,100% 100%,0 100%,6% 50%);font-size:clamp(9px,min(1.15cqw,2.3cqh),14px)}
 .tile.pop{animation:tpop .6s cubic-bezier(.2,1.6,.4,1)}
-.tile.lv3.pop{animation:tpop .6s cubic-bezier(.2,1.6,.4,1),halo 1.8s ease-in-out .6s infinite alternate}
+.tile.lv3.pop{animation:tpop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes tpop{0%{transform:scale(1)}35%{transform:scale(1.14)}100%{transform:scale(1)}}
 .spark{position:fixed;left:0;top:0;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#fff,#ffd24d 60%,rgba(255,210,77,0));z-index:46;pointer-events:none}
 .spark.star{width:10px;height:10px;border-radius:0;background:#ffe27a;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%)}
@@ -174,9 +174,10 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 }
 .tok{display:block;width:26px;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.35),rgba(255,255,255,0) 55%),var(--c);border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.4);overflow:hidden;flex:none;position:relative}
 .tok svg{width:100%;height:100%;display:block}
-.tile .tok{border-width:1.5px}
-.tile .tok.me{box-shadow:0 0 0 2px var(--lantern),0 0 10px 2px rgba(255,162,76,.9);animation:meglow 1.3s ease-in-out infinite;z-index:2}
-@keyframes meglow{50%{box-shadow:0 0 0 2px rgba(255,162,76,.3),0 0 4px 0 rgba(255,162,76,.3)}}
+.tile .tok{border-width:2px;box-shadow:0 0 0 1.5px rgba(10,12,28,.85),0 3px 6px rgba(0,0,0,.65);transform:translateY(-1px)}
+.tile .toks{bottom:4%}
+.tile .tok.me{box-shadow:0 0 0 1.5px rgba(10,12,28,.85),0 0 0 3.5px var(--lantern),0 0 12px 3px rgba(255,162,76,.9);animation:meglow 1.3s ease-in-out infinite;z-index:2}
+@keyframes meglow{50%{box-shadow:0 0 0 1.5px rgba(10,12,28,.85),0 0 0 3.5px rgba(255,162,76,.35),0 0 4px 0 rgba(255,162,76,.3)}}
 .tile .tok.hop{animation:hop .12s ease-out}
 @keyframes hop{50%{transform:translateY(-38%)}}
 .tok.lg{width:clamp(30px,6cqmin,54px);border-width:2.5px}
@@ -217,7 +218,7 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .banner .t{font-family:var(--display);font-size:clamp(22px,6cqmin,54px);line-height:1.05;color:var(--bc,#ffa24c)}
 .banner .s{font-size:clamp(12px,2cqmin,16px);color:var(--text);font-weight:600}
 @keyframes pop{0%{opacity:0;transform:scale(.6)}12%{opacity:1;transform:scale(1)}82%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.95) translateY(-8px)}}
-.bill{position:fixed;left:0;top:0;width:clamp(30px,4.2vmin,46px);z-index:45;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45));will-change:transform}
+.bill{position:fixed;left:0;top:0;width:clamp(30px,4.2vmin,46px);z-index:45;pointer-events:none}
 .bill svg{display:block;width:100%;height:auto}
 .pchip.gain{animation:gain .5s ease-out}
 .pchip.lose{animation:lose .45s ease-out}
@@ -459,7 +460,7 @@ const CH=[
 ].map((x,i)=>Object.assign(x,{svg:`<svg viewBox="0 0 40 40" aria-hidden="true"><g transform="translate(3 3) scale(.85)">${CHAR_ART[i]}</g></svg>`}));
 const PC=CH.map(x=>x.c);
 
-const G=['#7b4a26','#b3261e','#c05600','#8a6d00','#2e7d32','#00695c','#1f4fbf','#5e35b1'];
+const G=['#6e4c33','#9d3a34','#a3591d','#756115','#3a713d','#105950','#3759a7','#64489e'];
 const S_=(n,p,g,sn)=>({k:'s',n,p,g,sn:sn||n});
 const PK=(n,sn)=>({k:'park',n,p:200,sn});
 const CD={k:'card',n:'뽑기',d:'카드 한 장'};
@@ -1075,8 +1076,10 @@ function playTx(){
   if(reduce)return;
   requestAnimationFrame(()=>fresh.forEach((t,k)=>flyMoney(t,k*260)));}
 
-function render(){renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();
-  if(!isMoving()&&!coinSpinning()){detect();playTx();}ceremony();}
+let renderErrs=0;
+function render(){try{render0();renderErrs=0;}catch(e){console.error('render',e);if(++renderErrs<4)setTimeout(render,300);}}
+function render0(){renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();
+  if(!isMoving()&&!coinSpinning()){detect();playTx();}ceremony();if(mode==='local')saveSess();}
 
 /* ---------- networking ---------- */
 function makeWsRoom(){
@@ -1102,10 +1105,14 @@ function makeWsRoom(){
     onConnection(fn){ccb.push(fn);setTimeout(()=>fn(conn),0);return()=>{};},
     connected:()=>conn,
     switchTo(c){if(c===ch)return;ch=c;mine={};last=[];const o=ws;ws=null;if(o){try{o.close()}catch(e){}}setConn(false);clearTimeout(rt);if(ch)connect();emitSoon();}};}
-function saveSess(){if(NET!=='ws')return;try{
+function saveSess(){try{
+  if(mode==='local'&&S){sessionStorage.setItem('nm-local',JSON.stringify(S));}else if(mode!=='local')sessionStorage.removeItem('nm-local');}catch(e){}
+  if(NET!=='ws')return;try{
   if(mode==='host'&&S)sessionStorage.setItem('nm-sess',JSON.stringify({mode:'host',S,lastReq}));
   else if(mode==='guest'&&joinCode)sessionStorage.setItem('nm-sess',JSON.stringify({mode:'guest',code:joinCode,reqN}));
   else sessionStorage.removeItem('nm-sess');}catch(e){}}
+function restoreLocal(){let L=null;try{L=JSON.parse(sessionStorage.getItem('nm-local')||'null')}catch(e){}
+  if(!L||!L.players||!L.players.length)return false;S=L;mode='local';lastSeq=S.seq;if(S.gid)ordShown=S.gid;return true;}
 function restoreSess(){let s=null;try{s=JSON.parse(sessionStorage.getItem('nm-sess')||'null')}catch(e){}if(!s)return false;
   if(s.mode==='host'&&s.S&&s.S.code){S=s.S;mode='host';Object.assign(lastReq,s.lastReq||{});lastSeq=S.seq;if(S.gid)ordShown=S.gid;room.switchTo(S.code);publish();return true;}
   if(s.mode==='guest'&&/^\d{4}$/.test(s.code||'')){joinCode=s.code;reqN=+s.reqN||0;mode='guest';S=null;room.switchTo(joinCode);
@@ -1152,7 +1159,7 @@ function onPeers(ch){peers=ch.peers;const me=peers.find(p=>p.sameTab);if(me)myPe
 
 /* ---------- actions ---------- */
 function act(a){
-  if(mode==='local'||mode==='host'){if(apply(S,a)){confirmEnd=false;publish();render();}return;}
+  if(mode==='local'||mode==='host'){if(apply(S,a)){confirmEnd=false;publish();if(mode==='local')saveSess();render();}return;}
   if(mode==='guest'&&room){reqN++;saveSess();pending=sig(S);room.presence({req:{n:reqN,a}}).catch(()=>{pending=null;render();});render();
     setTimeout(()=>{if(pending){pending=null;render();}},4000);}}
 function nickOk(){const el=document.getElementById('nick');const v=clean(el?el.value:myName);if(!v){if(el){el.focus();el.placeholder='닉네임을 먼저 적어주세요';}return false;}myName=v;save('nm-nick',v);return true;}
@@ -1186,7 +1193,7 @@ document.addEventListener('click',e=>{
   case 'cnt-':localCount=Math.max(2,localCount-1);render();break;
   case 'cnt+':localCount=Math.min(6,localCount+1);render();break;
   case 'lstart':{const names=Array.from({length:localCount},(_,i)=>clean((document.getElementById('ln'+i)||{}).value)||CH[localChars[i]].n);
-    S=newGame('local');S.players=names.map((n,i)=>({id:'L'+i,name:n,ch:localChars[i]}));startGame(S);mode='local';lastSeq=S.seq;render();break;}
+    S=newGame('local');S.players=names.map((n,i)=>({id:'L'+i,name:n,ch:localChars[i]}));startGame(S);mode='local';lastSeq=S.seq;saveSess();render();break;}
   case 'lcycle':{const i=+b.dataset.i;const used=new Set(localChars.slice(0,localCount).filter((_,k)=>k!==i));let c=localChars[i];
     do{c=(c+1)%CH.length}while(used.has(c));localChars[i]=c;render();break;}
   case 'pick':{const k=+b.dataset.ch;myCh=k;save('nm-ch',String(k));
@@ -1226,6 +1233,9 @@ try{if(screen.orientation&&screen.orientation.addEventListener)screen.orientatio
 window.addEventListener('orientationchange',()=>setTimeout(applyOrient,50));
 window.addEventListener('resize',applyOrient);
 
+if(restoreLocal()){setTimeout(render,0);}
+/* local test hook (localhost / file only; never on the public site) */
+if(/^(localhost|127\.0\.0\.1|)$/.test(location.hostname))window.__nm={get S(){return S},set S(v){S=v},apply:(a)=>apply(S,a),publish:()=>publish(),render:()=>render()};
 /* ---------- boot ---------- */
 render();
 if(NET==='ws'){
