@@ -136,10 +136,10 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .tile.lv1 .lamps,.tile.lv2 .lamps,.tile.lv3 .lamps{display:flex}
 .tile.lv1 .nm,.tile.lv2 .nm,.tile.lv3 .nm{padding-top:clamp(5px,1.1cqmin,11px)}
 .tile.lv1 .lamps i:nth-child(1),.tile.lv1 .lamps i:nth-child(3){visibility:hidden}
-.tile.lv3 .lamps i{animation:sway 1.8s ease-in-out infinite alternate}
-.tile.lv3 .lamps i:nth-child(2){animation-delay:-.6s}
-.tile.lv3 .lamps i:nth-child(3){animation-delay:-1.2s}
-.tile.lv2 .lamps i:nth-child(1){transform:rotate(-8deg)}.tile.lv2 .lamps i:nth-child(3){transform:rotate(8deg)}
+.tile.lv2 .lamps i,.tile.lv3 .lamps i{animation:sway 1.8s ease-in-out infinite alternate}
+.tile.lv2 .lamps i:nth-child(2),.tile.lv3 .lamps i:nth-child(2){animation-delay:-.6s}
+.tile.lv2 .lamps i:nth-child(3),.tile.lv3 .lamps i:nth-child(3){animation-delay:-1.2s}
+html.lite .tile.lv2 .lamps i:nth-child(1){transform:rotate(-8deg)}html.lite .tile.lv2 .lamps i:nth-child(3){transform:rotate(8deg)}
 @keyframes sway{from{transform:rotate(-12deg)}to{transform:rotate(12deg)}}
 .tile.lv1 .band,.tile.lv2 .band{filter:saturate(1.4) brightness(1.15)}
 .tile.lv1{box-shadow:inset 0 0 0 3px var(--own,transparent),inset 0 0 0 5px rgba(255,210,77,.35),inset 0 0 12px rgba(0,0,0,.25)}
