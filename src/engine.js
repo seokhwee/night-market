@@ -8,7 +8,7 @@ const T=[
  {k:'jail',n:'단속반',d:'구경만 해요'},
  S_('떡볶이',140,2),{k:'busk',n:'버스킹',d:'모두에게 20씩'},S_('순대',140,2),S_('튀김',160,2),PK('동문 주차장','동문P'),S_('김밥',180,3),CD,S_('핫바',180,3),S_('소떡소떡',200,3,'소떡'),
  {k:'rest',n:'분수광장',d:'쉬어가기'},
- S_('닭꼬치',220,4),CD,S_('핫도그',220,4),S_('회오리감자',240,4,'회오리'),PK('남문 주차장','남문P'),S_('군고구마',260,5,'고구마'),S_('츄러스',260,5),{k:'tax',n:'전기세',amt:150,d:'-150냥'},S_('와플',280,5),
+ S_('닭꼬치',220,4),{k:'coin',n:'동전 던지기',d:'2배·3배·5배'},S_('핫도그',220,4),S_('회오리감자',240,4,'회오리'),PK('남문 주차장','남문P'),S_('군고구마',260,5,'고구마'),S_('츄러스',260,5),{k:'tax',n:'전기세',amt:150,d:'-150냥'},S_('와플',280,5),
  {k:'gojail',n:'단속 걸림',d:'단속반으로 · 한 턴 쉼'},
  S_('탕후루',300,6),S_('버블티',300,6),CD,S_('크레페',320,6),PK('서문 주차장','서문P'),CD,S_('타코야끼',350,7,'타코'),{k:'tax',n:'가스비',amt:120,d:'-120냥'},S_('스테이크 큐브',400,7,'스테이크')
 ];
@@ -28,7 +28,7 @@ const CARDS=[
  {t:'분수광장으로 산책 가요',go:20}
 ];
 const N=T.length;
-const CFG={sellMult:.5,start:1500,orderBonus:100,pass:200,rentMult:1.0,rounds:15,takeMult:1.5,parkRent:[25,50,100,200],exCost:.5,exMult:[1,1.5,2,2.5],exMax:3};
+const CFG={coinBets:[100,200,300],coinMult:[2,3,5],sellMult:.5,start:1500,orderBonus:100,pass:200,rentMult:1.0,rounds:15,takeMult:1.5,parkRent:[25,50,100,200],exCost:.5,exMult:[1,1.5,2,2.5],exMax:3};
 const UNIT='냥';
 const GN=['갈색','빨강','주황','겨자','초록','청록','파랑','보라'];
 const TURN_SEC=30;
@@ -90,13 +90,14 @@ function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
   case 'jail':addLog(s,`${p.name}: 단속반을 구경만 해요`);break;
   case 'busk':{let n=0;s.players.forEach((q,j)=>{if(j!==i&&!q.out){pay(s,j,i,20);n++}});addLog(s,`${p.name}: 버스킹 공연으로 ${n*20}${UNIT} 모았어요`);break;}
   case 'rest':addLog(s,`${p.name}: 분수광장에서 쉬어가요`);break;
+  case 'coin':if(p.money>=CFG.coinBets[0]){s.stage='coinBet';s.coin=null;addLog(s,`${p.name}: 동전 던지기 칸! 도전할까요?`);}else addLog(s,`${p.name}: 동전 던지기에 걸 돈이 부족해요`);break;
   case 'start':addLog(s,`${p.name}: 입구에 도착`);break;}
 }
 function finish(s){s.phase='over';s.endReason=s.endReason||'rounds';let best=-1,bw=-1;s.players.forEach((p,i)=>{if(!p.out){const w=worth(s,i);if(w>bw){bw=w;best=i}}});s.winner=best;}
 function nextTurn(s){if(s.phase!=='play')return;const n=s.players.length,prev=s.turn;let k=0;
   do{s.turn=(s.turn+1)%n;k++}while(s.players[s.turn].out&&k<=n);
   if(s.turn<=prev){s.round++;if(s.round>CFG.rounds){s.round=CFG.rounds;s.endReason='rounds';finish(s);addLog(s,`${CFG.rounds}라운드 종료! 자산이 가장 많은 사람이 이겨요`);return;}}
-  s.stage='roll';s.card='';s.dbl=0;s.extra=false;s.lastDbl=0;s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;const p=s.players[s.turn];s.msg=p.skip?`${p.name} 차례 (이번엔 쉬어요)`:`${p.name} 차례예요`;}
+  s.stage='roll';s.card='';s.dbl=0;s.extra=false;s.lastDbl=0;s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.coin=null;const p=s.players[s.turn];s.msg=p.skip?`${p.name} 차례 (이번엔 쉬어요)`:`${p.name} 차례예요`;}
 function afterAct(s){if(s.phase==='play'&&s.stage==='end'&&s.extra){const p=s.players[s.turn];s.extra=false;
   if(p.out||p.skip){s.dbl=0;return;}s.stage='roll';s.card='';s.msg=`${p.name}: 더블! 한 번 더 굴려요`+(s.dbl>=2?' (한 번 더 나오면 단속!)':'');}}
 function resolvePend(s){if(s.phase!=='play'||s.stage!=='end'||!s.exPend)return;s.exPend=false;const p=s.players[s.turn];if(p.out)return;
@@ -117,6 +118,22 @@ function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players
     if(!(j>=0&&j<N)||(s.stage==='expand'&&j!==s.exTarget)||!canExpand(s,i,j))return false;
     p.money-=exCost(j);tx(s,i,-1,exCost(j));s.lv[j]=lvOf(s,j)+1;const L=s.lv[j];
     addLog(s,`${p.name}: ${T[j].n} 확장! ${L>=CFG.exMax?'명물 가게가 됐어요 (인수 불가)':L+'단계'} · 이용료 ${rent(s,j)}${UNIT}`);s.stage='end';s.exTarget=null;return true;}
+  if(s.stage==='coinBet'){
+    if(typeof a==='string'&&a.indexOf('bet:')===0){const b=parseInt(a.slice(4),10);if(!CFG.coinBets.includes(b)||p.money<b)return false;
+      p.money-=b;tx(s,i,-1,b);s.coin={bet:b,streak:0,flips:0,last:null};s.stage='coinPick';addLog(s,`${p.name}: ${b}${UNIT}을 걸었어요! 앞? 뒤?`);return true;}
+    if(a==='pass'){addLog(s,`${p.name}: 동전 던지기는 건너뛰어요`);s.stage='end';return true;}
+    return false;}
+  if(s.stage==='coinPick'&&(a==='pick:H'||a==='pick:T')){const c=s.coin,pick=a.slice(5),res=Math.random()<.5?'H':'T',win=pick===res;
+    c.flips++;c.last={pick,res,win,n:c.flips};
+    if(win){c.streak++;const m=CFG.coinMult[c.streak-1];
+      if(c.streak>=CFG.coinMult.length){const w=c.bet*m;p.money+=w;tx(s,-1,i,w);c.done='jackpot';addLog(s,`${p.name}: 3연속 적중! ${m}배 대박, ${w}${UNIT}!`);s.stage='end';}
+      else{addLog(s,`${p.name}: ${res==='H'?'앞면':'뒷면'} 적중! ${c.streak}연속 · 지금 멈추면 ${c.bet*m}${UNIT}`);s.stage='coinNext';}}
+    else{c.done='lose';addLog(s,`${p.name}: ${res==='H'?'앞면':'뒷면'}… 빗나갔어요. ${c.bet}${UNIT}을 잃었어요`);s.stage='end';}
+    return true;}
+  if(s.stage==='coinNext'){const c=s.coin;
+    if(a==='cash'){const m=CFG.coinMult[c.streak-1],w=c.bet*m;p.money+=w;tx(s,-1,i,w);c.done='cash';addLog(s,`${p.name}: ${m}배로 멈췄어요! +${w}${UNIT}`);s.stage='end';return true;}
+    if(a==='again'){s.stage='coinPick';addLog(s,`${p.name}: 한 번 더! ${CFG.coinMult[c.streak]}배 도전`);return true;}
+    return false;}
   if(s.stage==='sell'){
     if(typeof a==='string'&&a.indexOf('sell:')===0){const j=parseInt(a.slice(5),10);if(!(j>=0&&j<N)||s.owners[j]!==i)return false;
       const v=sellTile(s,i,j);settleOwe(s);addLog(s,`${p.name}: ${T[j].n}을(를) ${v}${UNIT}에 팔았어요`+(owed(s)>0?` · 아직 ${owed(s)}${UNIT} 부족`:' · 빚을 다 갚았어요'));
