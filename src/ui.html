@@ -46,8 +46,8 @@ html.need-rotate .rotate{display:flex;position:fixed;inset:0;flex-direction:colu
 .tile.k-s .band::after{content:"";position:absolute;left:0;right:0;top:100%;height:clamp(2px,.5cqmin,5px);background:radial-gradient(circle at 50% 0,rgba(255,255,255,.34) 0 60%,transparent 64%) 0 0/12.5% 100% repeat-x}
 .tile .ico{position:absolute;right:4%;bottom:4%;width:clamp(10px,2.5cqmin,24px);height:auto;z-index:1;opacity:.95}
 .tile.corner .ico{width:clamp(18px,5.2cqmin,50px);right:7%;bottom:7%}
-.tile .nm{font-weight:700;font-size:clamp(8px,min(1.05cqw,2.1cqh),15px);line-height:1.12;padding:3px 2px 0 3px;word-break:keep-all;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;position:relative;z-index:1}
-.tile .pr{font-size:clamp(7px,min(.85cqw,1.7cqh),12.5px);color:rgba(255,255,255,.78);padding:1px 3px 0;font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap;position:relative;z-index:1}
+.tile .nm{text-align:center;font-weight:700;font-size:clamp(8px,min(1.05cqw,2.1cqh),15px);line-height:1.12;padding:3px 2px 0;word-break:keep-all;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;position:relative;z-index:1}
+.tile .pr{text-align:center;font-size:clamp(7px,min(.85cqw,1.7cqh),12.5px);color:rgba(255,255,255,.78);padding:1px 3px 0;font-variant-numeric:tabular-nums;line-height:1.2;white-space:nowrap;position:relative;z-index:1}
 .tile.k-card{--tb:#873a65}
 .tile.k-card::after{content:"?";position:absolute;right:4%;bottom:0;font-family:var(--display);font-size:clamp(14px,3.4cqmin,34px);line-height:1;color:rgba(255,255,255,.28)}
 .tile.k-park{--tb:#4a5860}
@@ -160,6 +160,24 @@ html.lite .tile.lv2 .lamps i:nth-child(1){transform:rotate(-8deg)}html.lite .til
 .tile .lvl.star3{background:linear-gradient(180deg,#fff1a8,#ffc21a);color:#5a3a00;padding:1px 7px;border-radius:3px;top:1px;box-shadow:0 2px 5px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,94% 50%,100% 100%,0 100%,6% 50%);font-size:clamp(9px,min(1.15cqw,2.3cqh),14px)}
 .tile.pop{animation:tpop .6s cubic-bezier(.2,1.6,.4,1)}
 .tile.lv3.pop{animation:tpop .6s cubic-bezier(.2,1.6,.4,1)}
+/* 명물: 무대 소품처럼 세운 음식 판자 */
+.tile .stand{display:none;position:absolute;left:50%;bottom:5%;height:58%;aspect-ratio:1;max-width:96%;transform:translateX(-50%);pointer-events:none;z-index:0;perspective:90px}
+.tile.lv3 .stand{display:block}
+.stand .flat{position:absolute;left:4%;right:4%;top:0;bottom:12%;transform-origin:50% 100%;transform:rotateX(14deg);
+  filter:drop-shadow(1.2px 0 0 #f7e7c6) drop-shadow(-1.2px 0 0 #f7e7c6) drop-shadow(0 1.2px 0 #f7e7c6) drop-shadow(0 -1.2px 0 #f7e7c6) drop-shadow(1.6px 1.8px 0 #7a5530) drop-shadow(0 4px 3px rgba(0,0,0,.55))}
+.stand .flat svg{width:100%;height:100%;display:block;overflow:visible}
+.stand .leg{position:absolute;right:26%;bottom:10%;width:9%;height:46%;background:linear-gradient(90deg,#6b4423,#9a6a3c);border-radius:1px;transform:skewX(-22deg);transform-origin:bottom;box-shadow:0 0 0 .5px #3a2410}
+.stand .base{position:absolute;left:12%;right:12%;bottom:4%;height:11%;border-radius:2px;background:linear-gradient(180deg,#c8955a,#8a5a2c);box-shadow:0 0 0 .6px #4a2e14,0 3px 4px rgba(0,0,0,.55);background-image:linear-gradient(180deg,#c8955a,#8a5a2c),repeating-linear-gradient(90deg,transparent 0 30%,rgba(0,0,0,.18) 30% 32%)}
+.stand .base::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 31%,rgba(60,30,10,.35) 31% 33%);border-radius:2px}
+.tile.lv3.pop .stand .flat{animation:flip .9s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes flip{0%{transform:rotateX(88deg)}60%{transform:rotateX(-6deg)}100%{transform:rotateX(14deg)}}
+.tile.lv3 .nm,.tile.lv3 .pr{text-shadow:0 1px 2px rgba(0,0,0,.85)}
+.tile.k-s:not(.hz) .stand{height:52%}
+.tile.hz .stand{left:auto;right:2%;bottom:3%;transform:none;height:88%;max-width:44%}
+.tile.hz.lv3 .nm,.tile.hz.lv3 .pr{padding-right:44%}
+.tile.hz.lv3 .lvl{left:28%}
+.tile.lv3 .nm{padding-top:clamp(13px,2.3cqmin,20px)}
+.tile.hz.lv3 .toks{right:44%}
 @keyframes tpop{0%{transform:scale(1)}35%{transform:scale(1.14)}100%{transform:scale(1)}}
 .spark{position:fixed;left:0;top:0;width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,#fff,#ffd24d 60%,rgba(255,210,77,0));z-index:46;pointer-events:none}
 .spark.star{width:10px;height:10px;border-radius:0;background:#ffe27a;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%)}
@@ -169,6 +187,7 @@ html.lite .tile.lv2 .lamps i:nth-child(1){transform:rotate(-8deg)}html.lite .til
 .short{display:none}
 @container (max-height:430px){
   .tile .pr{display:none}
+  .tile.k-s:not(.hz) .stand{height:44%;bottom:3%}
   .center .intro,.center .parade{display:none}
   .center .brand{padding-top:.12em}
 }
@@ -474,7 +493,7 @@ const ICO={
 const CROWN='<svg class="crown" viewBox="0 0 60 34" aria-hidden="true"><path d="M4 30 8 8l12 12L30 3l10 17L52 8l4 22z" fill="#ffc933" stroke="#8a5a00" stroke-width="2" stroke-linejoin="round"/><circle cx="30" cy="20" r="3.2" fill="#ff4d6d"/><circle cx="16" cy="24" r="2.4" fill="#3fb6f2"/><circle cx="44" cy="24" r="2.4" fill="#5ccf6d"/></svg>';
 function cell(i){if(i<=10)return[11-i,1];if(i<=20)return[1,1+(i-10)];if(i<=30)return[1+(i-20),11];return[11,11-(i-30)];}
 const tiles=T.map((t,i)=>{const el=document.createElement('button');el.type='button';const[r,c]=cell(i);el.style.gridRow=r;el.style.gridColumn=c;
-  el.className='tile k-'+t.k+(i%10===0?' corner':'');el.dataset.tile=i;el.setAttribute('aria-label',t.n);
+  el.className='tile k-'+t.k+(i%10===0?' corner':((i>0&&i<10)||(i>20&&i<30)?' hz':''));el.dataset.tile=i;el.setAttribute('aria-label',t.n);
   const nm=t.sn&&t.sn!==t.n?`<span class="full">${t.n}</span><span class="short">${t.sn}</span>`:t.n;
   if(t.k==='s'||t.k==='park'){if(t.k==='s')el.style.setProperty('--g',G[t.g]);el.innerHTML=`<div class="band"></div><div class="nm">${nm}</div><div class="pr">${t.p}${UNIT}</div>`;}
   else el.innerHTML=`<div class="nm">${nm}</div><div class="pr">${t.d||''}</div>`;
@@ -482,6 +501,7 @@ const tiles=T.map((t,i)=>{const el=document.createElement('button');el.type='but
   else if(ICO[t.k])el.insertAdjacentHTML('beforeend',ICO[t.k]);
   if(t.k==='tax'||t.k==='gojail'){const b=document.createElement('div');b.className='band';el.insertBefore(b,el.firstChild);}
   const lv=document.createElement('div');lv.className='lvl';lv.hidden=true;el.appendChild(lv);
+  if(t.k==='s'&&typeof FOOD_ART!=='undefined'&&FOOD_ART[t.n]){const sd=document.createElement('div');sd.className='stand';sd.innerHTML=`<i class="leg"></i><div class="flat"><svg viewBox="0 0 40 40" aria-hidden="true">${FOOD_ART[t.n]}</svg></div><i class="base"></i>`;el.insertBefore(sd,lv);}
   if(t.k==='s'){const lm=document.createElement('div');lm.className='lamps';lm.innerHTML='<i></i><i></i><i></i>';el.insertBefore(lm,el.children[1]);}
   if(t.k==='rest'){const pb=document.createElement('div');pb.className='pot';pb.hidden=true;el.appendChild(pb);}
   const fl=document.createElement('div');fl.className='flag';fl.hidden=true;el.appendChild(fl);
