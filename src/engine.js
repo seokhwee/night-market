@@ -99,7 +99,7 @@ function land(s,depth){const i=s.turn,p=s.players[i],t=T[p.pos];s.stage='end';
   case 'card':s.stage='draw';s.drawDepth=depth||0;s.card='';addLog(s,`${p.name}: 뽑기 칸! 제비를 하나 뽑아요`);break;
   case 'tax':addLog(s,`${p.name}: ${t.n} ${t.amt}${UNIT} 냈어요`);pay(s,i,-1,t.amt);break;
   case 'jail':jail(s,i,10);addLog(s,`${p.name}: 단속반에 들어왔어요! 다음 턴은 쉬어요`);break;
-  case 'travel':s.stage='travel';addLog(s,`${p.name}: 맛집탐방! 가고 싶은 칸을 골라요`);break;
+  case 'travel':p.tour=true;addLog(s,`${p.name}: 맛집탐방 도착! 다음 차례에 원하는 칸으로 갈 수 있어요`);break;
   case 'busk':{let n=0;s.players.forEach((q,j)=>{if(j!==i&&!q.out){pay(s,j,i,20);n++}});addLog(s,`${p.name}: 버스킹 공연으로 ${n*20}${UNIT} 모았어요`);break;}
   case 'rest':if(s.pot>0){const w=s.pot;s.pot=0;p.money+=w;tx(s,-2,i,w);s.potN=(s.potN||0)+1;s.potWin={n:s.potN,i,a:w};addLog(s,`${p.name}: 분수광장 세금 환급! 모인 ${w}${UNIT}을 모두 받아요`);}
     else addLog(s,`${p.name}: 분수광장에 왔지만 모인 세금이 없어요`);break;
@@ -121,7 +121,8 @@ function finish(s){s.phase='over';s.endReason=s.endReason||'rounds';let best=-1,
 function nextTurn(s){if(s.phase!=='play')return;const n=s.players.length,prev=s.turn;let k=0;
   do{s.turn=(s.turn+1)%n;k++}while(s.players[s.turn].out&&k<=n);
   if(s.turn<=prev){s.round++;if(s.round>CFG.rounds){s.round=CFG.rounds;s.endReason='rounds';finish(s);addLog(s,`${CFG.rounds}라운드 종료! 자산이 가장 많은 사람이 이겨요`);return;}}
-  s.stage='roll';s.card='';s.dbl=0;s.extra=false;s.lastDbl=0;s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.coin=null;const p=s.players[s.turn];s.msg=p.skip?`${p.name} 차례 (이번엔 쉬어요)`:`${p.name} 차례예요`;}
+  s.stage='roll';s.card='';s.dbl=0;s.extra=false;s.lastDbl=0;s.exPend=false;s.exTarget=null;s.owe=[];s.resume=null;s.coin=null;const p=s.players[s.turn];s.msg=p.skip?`${p.name} 차례 (이번엔 쉬어요)`:`${p.name} 차례예요`;
+  if(p.tour&&!p.skip&&p.pos===30){s.stage='travel';s.msg=`${p.name}: 맛집탐방! 가고 싶은 칸을 골라요 (안 가면 주사위를 굴려요)`;}else p.tour=false;}
 function afterAct(s){if(s.phase==='play'&&s.stage==='end'&&s.extra){const p=s.players[s.turn];s.extra=false;
   if(p.out||p.skip){s.dbl=0;return;}s.stage='roll';s.card='';s.msg=`${p.name}: 더블! 한 번 더 굴려요`+(s.dbl>=2?' (한 번 더 나오면 단속!)':'');}}
 function resolvePend(s){if(s.phase!=='play'||s.stage!=='end'||!s.exPend)return;s.exPend=false;const p=s.players[s.turn];if(p.out)return;
@@ -173,7 +174,7 @@ function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players
     if(a==='giveup'){bankrupt(s,d,'님이 파산을 선언했어요 · 못 낸 돈은 은행이 대신 냈어요');return true;}
     return false;}
   if(a==='pass'&&(s.stage==='expand'||s.stage==='expandAny')){addLog(s,`${p.name}: 확장하지 않았어요`);s.stage='end';s.exTarget=null;return true;}
-  if(a==='roll'&&s.stage==='roll'){s.seq++;s.card='';s.lastDbl=0;s.exPend=false;
+  if(a==='roll'&&s.stage==='roll'){s.seq++;p.tour=false;s.card='';s.lastDbl=0;s.exPend=false;
     if(p.skip){p.skip=false;s.dice=[0,0];s.dbl=0;addLog(s,`${p.name}: 이번 턴은 쉬어요`);s.stage='end';return true;}
     const d1=1+Math.floor(Math.random()*6),d2=1+Math.floor(Math.random()*6);s.dice=[d1,d2];
     if(d1===d2){s.dbl=(s.dbl||0)+1;s.lastDbl=s.dbl;
@@ -196,9 +197,9 @@ function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players
     s.stage='end';return true;}
   if(s.stage==='draw'&&typeof a==='string'&&/^draw(:[0-9])?$/.test(a)){drawCard(s,a.length>5?Math.min(4,+a.slice(5)):Math.floor(Math.random()*5));return true;}
   if(s.stage==='travel'&&typeof a==='string'&&a.indexOf('go:')===0){const j=parseInt(a.slice(3),10);if(!(j>=0&&j<N)||j===p.pos)return false;
-    const from=p.pos,steps=(j-from+N)%N;s.travN=(s.travN||0)+1;s.travFx={n:s.travN,i,from,to:j};
+    p.tour=false;const from=p.pos,steps=(j-from+N)%N;s.travN=(s.travN||0)+1;s.travFx={n:s.travN,i,from,to:j};
     addLog(s,`${p.name}: ${T[j].n}(으)로 맛집탐방 가요`+(from+steps>=N?' · 입구를 지나요':''));moveBy(s,i,steps);land(s,0);return true;}
-  if(a==='pass'&&s.stage==='travel'){addLog(s,`${p.name}: 탐방은 다음에 갈래요`);s.stage='end';return true;}
+  if(a==='pass'&&s.stage==='travel'){p.tour=false;addLog(s,`${p.name}: 탐방 대신 주사위를 굴려요`);s.stage='roll';return true;}
   if(a==='pass'&&(s.stage==='buy'||s.stage==='take')){addLog(s,`${p.name}: 그냥 지나가요`);s.stage='end';return true;}
   if(a==='end'&&s.stage==='end'){nextTurn(s);return true;}
   return false;}
