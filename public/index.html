@@ -791,6 +791,7 @@ function apply0(s,a){if(s.phase!=='play')return false;const i=s.turn,p=s.players
     else s.dbl=0;
     moveBy(s,i,d1+d2);land(s,0);
     s.extra=d1===d2&&!p.out&&!p.skip&&s.phase==='play';
+    if(p.tour&&d1===d2){s.extra=false;s.dbl=0;s.lastDbl=0;addLog(s,`${p.name}: 맛집탐방 도착! 더블은 취소되고 다음 차례에 원하는 칸으로 가요`);}
     return true;}
   if(typeof a==='string'&&/^buy(:\d)?$/.test(a)&&s.stage==='buy'){const t=T[p.pos],L=a.length>4?+a.slice(4):0;
     if(s.owners[p.pos]<0&&buyOptions(s,i,p.pos).includes(L)){const c=t.p+buildCost(p.pos,0,L);p.money-=c;tx(s,i,-1,c);s.owners[p.pos]=i;s.lv[p.pos]=L;
