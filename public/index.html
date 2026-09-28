@@ -852,7 +852,17 @@ const online=()=>mode==='host'||mode==='guest';
 let instEvt=null;
 /* 화면 고정: 핀치 확대·두 번 탭 확대·페이지 끌림 막기 (안쪽 스크롤 영역은 그대로) */
 ['gesturestart','gesturechange'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+/* 애플펜슬: 펜을 뗄 때 직접 탭으로 처리하고, 뒤따르는 브라우저 클릭은 한 번만 */
+let penDown=null,penTapAt=0,penXY=null;
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='pen')penDown={x:e.clientX,y:e.clientY,t:e.target};},true);
+document.addEventListener('pointerup',e=>{if(e.pointerType!=='pen'||!penDown)return;const d=penDown;penDown=null;
+  if(Math.abs(e.clientX-d.x)>20||Math.abs(e.clientY-d.y)>20)return;const el=document.elementFromPoint(e.clientX,e.clientY)||d.t;
+  if(el&&el.closest&&el.closest('input,textarea'))return;penTapAt=Date.now();penXY={x:e.clientX,y:e.clientY};if(el)el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:e.clientX,clientY:e.clientY}));},true);
+document.addEventListener('click',e=>{if(e.isTrusted&&Date.now()-penTapAt<600&&penXY&&Math.abs(e.clientX-penXY.x)<30&&Math.abs(e.clientY-penXY.y)<30){e.stopPropagation();e.preventDefault();}},true);
+/* 톡 누르는 동안의 작은 흔들림(특히 애플펜슬)은 막지 않아야 클릭이 살아 있어요. 확실히 끄는 동작만 막아요 */
+let t0=null;document.addEventListener('touchstart',e=>{const t=e.touches[0];t0=t?{x:t.clientX,y:t.clientY,pen:t.touchType==='stylus'}:null;},{passive:true});
 document.addEventListener('touchmove',e=>{if(e.touches.length>1){e.preventDefault();return;}
+  const t=e.touches[0];if(t0&&t){const lim=t0.pen?18:10;if(Math.abs(t.clientX-t0.x)<lim&&Math.abs(t.clientY-t0.y)<lim)return;}
   let el=e.target;while(el&&el!==document.body){if(el.scrollHeight>el.clientHeight+1){const o=getComputedStyle(el).overflowY;if(o==='auto'||o==='scroll')return;}el=el.parentElement;}
   e.preventDefault();},{passive:false});
 const isApp=()=>{try{return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true}catch(e){return false}};
