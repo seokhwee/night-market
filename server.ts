@@ -7,6 +7,7 @@ const STATIC: Record<string, string> = {
   "/icon-192.png": "image/png",
   "/icon-512.png": "image/png",
   "/apple-touch-icon.png": "image/png",
+  "/privacy.html": "text/html; charset=utf-8",
 };
 
 type Peer = { id: string; presence: Record<string, unknown>; ws: any | null; away: boolean; timer?: ReturnType<typeof setTimeout>; uid?: string };
@@ -127,6 +128,7 @@ const server = Bun.serve<{ ch: string; id: string }>({
     }
     if (u.pathname.startsWith("/api/") && u.pathname !== "/api/room") return apiRoute(u, req);
     if (u.pathname === "/health") return new Response("ok");
+    if (u.pathname === "/privacy") u.pathname = "/privacy.html";
     const st = STATIC[u.pathname];
     if (st) return new Response(Bun.file(new URL("./public" + u.pathname, import.meta.url)), { headers: { "content-type": st, "cache-control": u.pathname === "/sw.js" ? "no-cache" : "public, max-age=86400" } });
     if (u.pathname === "/" || u.pathname === "/index.html")
