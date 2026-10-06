@@ -364,6 +364,20 @@ input.f:focus{outline:none;border-color:var(--lantern)}
 #netpill{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:90;background:rgba(12,16,38,.94);color:#ffd9a8;border:1.5px solid #ffa24c;border-radius:999px;padding:6px 14px;font-size:14px;font-weight:700;pointer-events:none;white-space:nowrap}
 .lapb.debt{background:rgba(255,90,90,.22);color:#ffb4a8}
 .btn.loanb{background:linear-gradient(180deg,#8fd0ff,#4aa3e8);color:#06223a}
+.acct{display:flex;flex-direction:column;gap:6px;align-items:stretch;margin-top:2px}
+.acct .arow{display:flex;gap:8px}.acct .arow button{flex:1;min-height:40px;border-radius:12px;font-weight:700;font-size:14px;border:0;cursor:pointer}
+.acct .kakao{background:#FEE500;color:#191919}.acct .google{background:#fff;color:#1f1f1f;box-shadow:inset 0 0 0 1px #d0d0d0}
+.acct.in{flex-direction:row;align-items:center;justify-content:center;flex-wrap:wrap}
+.tokb{font-weight:800;color:#ffd84d;background:rgba(255,216,77,.12);border:1px solid rgba(255,216,77,.4);border-radius:999px;padding:3px 10px}
+.nm4{font-weight:700}.ghost.sm{min-height:32px;padding:4px 10px;font-size:13px}
+.stakes{width:100%;max-width:420px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.stakes .sh{font-weight:700}.stakes .sh small{color:var(--muted);font-weight:400;margin-left:4px}
+.stakes .srow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.stk{min-width:64px;min-height:36px;border-radius:10px;border:1.5px solid var(--line);background:var(--night);color:var(--text);font-weight:700;cursor:pointer}
+.stk.on{background:linear-gradient(180deg,#ffe27a,#ffb300);color:#3a2400;border-color:#ffd84d}.stk:disabled{opacity:.35;cursor:not-allowed}
+.lchips{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}.lchip{font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.08)}.lchip.off{color:#ffb4a8;background:rgba(255,90,90,.12)}
+.note.err{color:#ffb4a8}.stakeres{font-weight:800;color:#ffd84d;margin:0}
+.panel.grow{display:flex;justify-content:space-between;align-items:center;gap:8px}.gbtns{display:flex;gap:6px}.gmsg{font-weight:700;color:#ffd84d;margin:6px 0 0}
 .lapnote{flex-basis:100%;text-align:center}
 .lapb{font-style:normal;font-size:.78em;margin-left:4px;padding:0 5px;border-radius:6px;background:rgba(255,255,255,.12);color:#ffd9a8;white-space:nowrap}
 .turnline{display:flex;align-items:center;gap:10px;font-size:clamp(14px,2.6cqmin,22px);flex-wrap:wrap;justify-content:center}
@@ -737,10 +751,12 @@ function renderCenter(){
         <input class="f" id="nick" maxlength="8" placeholder="내 닉네임" autocomplete="off" value="${esc(myName)}">
         <div id="online" class="stack"></div>
         <button class="ghost" data-act="local">한 기기에서 번갈아 하기</button>
+        <div id="acct"></div>
         <div id="inst"></div>
       </div>
 `);
     const ie=document.getElementById('inst');if(ie)ie.innerHTML=installHTML();
+    const ac=document.getElementById('acct');if(ac&&ac.innerHTML!==acctHTML())ac.innerHTML=acctHTML();
     const on=document.getElementById('online');
     if(roomState==='none'){on.innerHTML=`<p class="note">이 화면에서는 온라인 방을 열 수 없어요. 한 기기에서 번갈아 하기는 가능해요.</p>`;return;}
     const ready=roomState==='ok'&&myPeer;
@@ -767,13 +783,14 @@ function renderCenter(){
     const inv=NET==='ws'?`<button class="ghost" data-act="copyinv">초대 링크 복사</button>`:'';
     setCenter('lobby',`<div class="eyebrow">방 코드 · ${NET==='ws'?'초대 링크를 보내거나 코드를 알려 주세요':'친구에게 링크와 함께 알려 주세요'}</div><div class="code">${esc(S.code)}</div>${inv}
       <div class="picker">${CH.map((c,k)=>{const o=owners[k];const mine=o&&o.id===myId();return `<button class="pick${mine?' mine':o?' taken':''}" data-act="pick" data-ch="${k}" ${o&&!mine?'disabled':''}>${tokHTML({c:k})}<span>${c.food}</span><small>${o?esc(o.name)+(o.id==='@host'?' · 방장':''):'비어 있음'}</small></button>`}).join('')}</div>
-      ${mode==='host'?`<button class="btn" data-act="start" ${S.players.length<2?'disabled':''}>${S.players.length<2?'친구를 기다리는 중':'게임 시작'}</button>`
+      ${stakeHTML()}
+      ${mode==='host'?`<button class="btn" data-act="start" ${S.players.length<2||stakeWait?'disabled':''}>${S.players.length<2?'친구를 기다리는 중':stakeWait?'판돈 걷는 중…':S.stakeSel?`🪙${S.stakeSel} 걸고 시작`:'게임 시작'}</button>`
         :`<p class="wait">${inRoom?'방장이 시작하기를 기다리는 중…':'방이 꽉 찼어요'}</p>`}
       <button class="ghost" data-act="leave">나가기</button>`,true);return;}
   if(S.phase==='over'){
     const order=S.players.map((p,i)=>({p,i,w:p.out?-1:worth(S,i)})).sort((a,b)=>b.w-a.w);
     const w=S.players[S.winner];
-    setCenter('over',`<div class="eyebrow">${S.endReason==='rounds'?CFG.rounds+'라운드 종료 · 자산 순위':'게임 종료'}</div>${w?CROWN+tokHTML(w,'xl'):''}<div class="brand">${w?esc(w.name):'무승부'}</div><p class="sub">${w?'야시장 최고 부자!':''}</p>
+    setCenter('over',`<div class="eyebrow">${S.endReason==='rounds'?CFG.rounds+'라운드 종료 · 자산 순위':'게임 종료'}</div>${w?CROWN+tokHTML(w,'xl'):''}<div class="brand">${w?esc(w.name):'무승부'}</div><p class="sub">${w?'야시장 최고 부자!':''}</p>${S.stakePot?`<p class="stakeres">${stakePaid&&stakePaid.gid===S.stakeGid?(stakePaid.refunded?'너무 빨리 끝난 판이라 판돈을 모두 돌려줬어요':`🪙 판돈 ${S.stakePot.toLocaleString()}을 ${w?esc(w.name):''}님이 가져갔어요!`):`🪙 판돈 ${S.stakePot.toLocaleString()} 정산 중…`}</p>`:''}
       <div class="rank">${order.map((o,k)=>`<div><span class="l">${k+1}. ${tokHTML(o.p,'sm')}${esc(o.p.name)}</span><span>${o.p.out?'파산':o.w.toLocaleString()+UNIT}</span></div>`).join('')}</div>
       <div class="acts">${isHostish?`<button class="btn" data-act="again">한 판 더</button>`:''}<button class="ghost" data-act="leave">나가기</button></div>`,true);return;}
   const cur=S.players[S.turn],mine=canAct();
@@ -803,7 +820,7 @@ function renderCenter(){
         :`<button class="btn" data-act="travel" data-v="${j}" ${dis}>🛵 ${T[j].n}(으)로 탐방 가기${around?` · 입구 통과 +${CFG.pass}`:''}</button><button class="ghost" data-act="pass" ${dis}>탐방 안 가고 주사위 굴리기</button>`;}
     else acts=`<button class="btn pink" data-act="end" ${dis}>턴 넘기기</button>`;}
   const youTag=(mode!=='local'&&mine?'<span class="pill">내 차례</span>':'')+(amSpectator()?'<span class="pill specp">관전 중</span>':'')+(S.dbl&&S.phase==='play'?`<span class="pill dblp">더블 ×${S.dbl}</span>`:'');
-  setCenter('play',`<div class="round"><b>${S.round}</b> / ${CFG.rounds} 라운드${S.pot?` · 분수 적립 <b class="potv">${S.pot.toLocaleString()}</b>${UNIT}`:''}</div>
+  setCenter('play',`<div class="round"><b>${S.round}</b> / ${CFG.rounds} 라운드${S.stakePot?` · 판돈 <b class="potv">🪙${S.stakePot.toLocaleString()}</b>`:''}${S.pot?` · 분수 적립 <b class="potv">${S.pot.toLocaleString()}</b>${UNIT}`:''}</div>
     <div class="turnline">${tokHTML(cur,'lg')}<span class="who"><b>${esc(cur.name)} 차례</b><small>${CH[cur.c].food} ${CH[cur.c].n}</small></span> ${youTag}${online()?'<span class="tsec" id="tsec"></span>':''}</div>
     ${online()?'<div class="timer" id="timer"><i></i></div>':''}
     ${showCoin&&!walking?coinPanel(cur,spin):`${drawing?jebiHTML(mine&&!pending):cardFx?`<div class="jebi reveal" style="animation-delay:-${cardEl}ms"><div class="jar">${jarInner(false,S.lastCard.k)}</div>${cardHTML(true,cardEl)}</div>`:`<div class="dicerow${S.dice[0]&&S.dice[0]===S.dice[1]&&!diceFx?' isdbl':''}${diceFx?' hide':''}">${dieHTML(S.dice[0],rolling)}${dieHTML(S.dice[1],rolling)}<span class="total">${S.dice[0]?S.dice[0]+S.dice[1]:''}</span></div>
@@ -892,6 +909,7 @@ function rulesHTML(){return `<div class="panel"><ol class="rules">
     <li><b>돈이 모자라면</b> 현금을 먼저 다 내고, 나머지는 가게를 골라 은행에 <b>반값</b>(확장 비용 포함)으로 팔거나 대출로 메워요. 내 차례가 아니어도(버스킹, 생일 카드 등) 내가 직접 골라요. 2분 안에 안 고르면 대출 → 싼 가게 순으로 자동 처리돼요.</li>
     <li><b>은행 대출</b>: 돈이 모자랄 때 <b>한 게임에 한 번</b> 모자란 만큼 받을 수 있어요. <b>갚지 않아도 돼요</b>. 가게가 남아 있어도 바로 쓸 수 있어요.</li>
     <li><b>파산</b>: 가게를 팔지 않고 파산할 수도 있어요. 파산하면 가게는 모두 사라지고, 못 낸 돈은 <b>은행이 대신</b> 받을 사람(또는 분수광장)에게 전부 채워 줘요.</li>
+    ${NET==='ws'?`<li><b>판돈 게임</b>: 로그인하면 🪙토큰을 받아요 (가입 1,000 · 매일 첫 접속 100 · 0이 되면 하루 한 번 300). 방장이 판돈(100·300·500)을 고르면 시작할 때 모두에게서 걷고, <b>1등이 전부</b> 가져가요. 3분 안에 끝난 판은 모두 돌려줘요. 토큰은 사거나 돈으로 바꿀 수 없어요.</li>`:''}
     <li>온라인에서는 <b>${TURN_SEC}초</b> 안에 행동하지 않으면 자동으로 진행돼요. 가게를 팔아야 할 때는 <b>${CFG.sellSec/60}분</b>을 줘요.</li>
     <li><b>${CFG.rounds}라운드</b>가 끝나면 현금과 가게 값을 합친 자산이 가장 많은 사람이 이겨요.</li>
     <li>칸을 누르면 가격, 이용료, 주인, 같은 세트 칸을 볼 수 있어요. 세트는 칸 색으로 구분돼요.</li></ol></div>`;}
@@ -956,6 +974,7 @@ function renderSheet(){if(!sheetKind)return;
   if(sheetKind.startsWith('tile:'))sheet.innerHTML=tileSheetHTML(+sheetKind.slice(5));
   else if(sheetKind==='rules')sheet.innerHTML=`<div class="head"><h3>규칙</h3><button class="ghost" data-act="close">닫기</button></div>`+rulesHTML();
   else if(sheetKind==='settings')sheet.innerHTML=settingsHTML();
+  else if(sheetKind==='gift')sheet.innerHTML=giftHTML();
   else if(sheetKind==='react')sheet.innerHTML=`<div class="grab"></div><div class="head"><h3>반응 보내기</h3><button class="ghost" data-act="close">닫기</button></div>`+reactHTML();}
 
 /* ---------- reactions ---------- */
@@ -1088,7 +1107,7 @@ function playTx(){
 
 let renderErrs=0;
 function render(){try{render0();renderErrs=0;}catch(e){console.error('render',e);if(++renderErrs<4)setTimeout(render,300);}}
-function render0(){fxDetect();renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();
+function render0(){syncTok();fxDetect();renderBoard();renderCenter();renderSide();renderBar();renderSheet();animateTokens();
   if(!isMoving()&&!coinSpinning()){detect();playTx();}ceremony();if(mode==='local')saveSess();netPill();}
 function netPill(){let el=document.getElementById('netpill');if(!el){el=document.createElement('div');el.id='netpill';document.body.appendChild(el);}
   let t='';if(online()&&S&&S.phase==='play'){if(NET==='ws'&&!connected)t='연결이 끊겼어요 · 다시 연결하는 중…';else if(mode==='guest'&&hostMissAt&&!hostGone)t='방장 연결을 기다리는 중… 게임은 그대로 이어져요';}
@@ -1097,17 +1116,64 @@ setInterval(()=>{if(mode==='guest'&&hostMissAt&&!hostGone&&Date.now()-hostMissAt
 setInterval(()=>{if(NET==='ws'&&online())fetch('/health',{cache:'no-store'}).catch(()=>{});},240000);
 
 /* ---------- networking ---------- */
+/* ---------- 로그인 · 토큰 · 판돈 (웹사이트 버전만) ---------- */
+const SB_URL='__SB_URL__',SB_ANON='__SB_ANON__',STAKE_OPTS=[100,300,500];
+const acct={on:false,sb:null,token:null,me:null};
+let stakeWait=null,stakeTimer=null,stakeErr='',stakePaid=null,tokSent='',giftData=null,giftMsg='';
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s);});}
+function notice(msg){const b=document.createElement('div');b.className='bubble';b.innerHTML=`<span class="e">${esc(msg)}</span>`;reacts.appendChild(b);setTimeout(()=>b.remove(),3200);}
+async function acctInit(){if(NET!=='ws'||!/^https:\/\//.test(SB_URL))return;
+  try{const c=await (await fetch('/api/config')).json();if(!c.login)return;}catch(e){return;}
+  try{await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js');}catch(e){return;}
+  if(!window.supabase)return;acct.on=true;
+  acct.sb=window.supabase.createClient(SB_URL,SB_ANON,{auth:{flowType:'pkce',detectSessionInUrl:true,persistSession:true,autoRefreshToken:true}});
+  acct.sb.auth.onAuthStateChange((ev,sess)=>setSession(sess));
+  try{const {data}=await acct.sb.auth.getSession();setSession(data.session);}catch(e){}
+  if(/[?&](code|error)=/.test(location.search)){const err=new URLSearchParams(location.search).get('error_description');history.replaceState(null,'',location.pathname+location.hash);if(err)notice('로그인 실패: '+err);}
+  render();}
+function setSession(sess){const t=(sess&&sess.access_token)||null;if(t===acct.token)return;const was=acct.token;acct.token=t;if(room&&room.setAuth)room.setAuth(t);
+  if(t){if(!was)loadMe(true);}else{acct.me=null;render();}}
+async function api(path,body){const r=await fetch(path,{method:body?'POST':'GET',headers:Object.assign({authorization:'Bearer '+acct.token},body?{'content-type':'application/json'}:{}),body:body?JSON.stringify(body):undefined});return r.json();}
+async function loadMe(greet){if(!acct.token)return;try{const me=await api('/api/me');if(me&&me.id){acct.me=me;if(greet&&me.daily)notice(`출석 보상 🪙+${me.daily}`);if(me.rescue)notice(`토큰이 바닥나서 구제 🪙+${me.rescue}`);render();}}catch(e){}}
+function syncTok(){if(!acct.me||!room||!online()||NET!=='ws')return;const k=(S&&S.code)+':'+acct.me.tokens;if(k===tokSent)return;tokSent=k;room.presence({tok:acct.me.tokens}).catch(()=>{});}
+function acctHTML(){if(!acct.on)return '';
+  if(!acct.token)return `<div class="acct"><p class="note">로그인하면 🪙토큰을 걸고 하는 <b>판돈 게임</b>을 할 수 있어요</p><div class="arow"><button class="kakao" data-act="login" data-v="kakao">카카오로 시작</button><button class="google" data-act="login" data-v="google">Google로 시작</button></div></div>`;
+  const m=acct.me;return `<div class="acct in"><span class="tokb">🪙 ${m?m.tokens.toLocaleString():'…'}</span><span class="nm4">${m?esc(m.nickname):''}</span><button class="ghost sm" data-act="gift">선물</button><button class="ghost sm" data-act="logout">로그아웃</button></div>`;}
+function lobbyInfo(){return S.players.map(p=>{const pe=p.id==='@host'?peers.find(x=>x.presence&&x.presence.host&&x.presence.code===S.code):peers.find(x=>x.peer===p.id);
+  const tok=pe&&pe.presence&&pe.presence.tok!=null?Number(pe.presence.tok):NaN;return {p,li:!!(pe&&pe.li),tok};});}
+function stakeHTML(){if(NET!=='ws'||!acct.on)return '';const info=lobbyInfo(),allIn=info.length>=2&&info.every(x=>x.li&&isFinite(x.tok)),minTok=allIn?Math.min(...info.map(x=>x.tok)):0,sel=S.stakeSel||0;
+  const chips=`<div class="lchips">${info.map(x=>`<span class="lchip${x.li?'':' off'}">${esc(x.p.name)} ${x.li?'🪙'+(isFinite(x.tok)?x.tok.toLocaleString():'…'):'· 로그인 안 함'}</span>`).join('')}</div>`;
+  if(mode==='host')return `<div class="stakes"><div class="sh">판돈 <small>1등이 전부 가져가요</small></div><div class="srow">${[0,...STAKE_OPTS].map(v=>`<button class="stk${sel===v?' on':''}" data-act="stake" data-v="${v}" ${v&&(!allIn||minTok<v)?'disabled':''}>${v?'🪙'+v:'없음'}</button>`).join('')}</div>${chips}${!allIn&&info.length>=2?'<p class="note">모두 로그인해야 판돈을 걸 수 있어요</p>':''}${stakeErr?`<p class="note err">${esc(stakeErr)}</p>`:''}</div>`;
+  return `<div class="stakes"><div class="sh">판돈 ${sel?`<b>🪙${sel}</b> <small>1등이 전부 가져가요${acct.token?'':' · 로그인해야 참가할 수 있어요'}</small>`:'없음'}</div>${chips}</div>`;}
+function startWithStake(){const stake=S.stakeSel,gid=Math.random().toString(36).slice(2,12);stakeErr='';stakeWait={gid};
+  if(!room.send({t:'stake',gid,stake,peers:S.players.map(p=>p.id)})){stakeWait=null;stakeErr='서버와 연결이 끊겼어요';render();return;}
+  clearTimeout(stakeTimer);stakeTimer=setTimeout(()=>{if(stakeWait&&stakeWait.gid===gid){stakeWait=null;stakeErr='응답이 없어요. 다시 눌러 주세요';render();}},10000);render();}
+function onRoomMsg(d){
+  if(d.t==='stakeres'&&stakeWait&&d.gid===stakeWait.gid&&mode==='host'&&S&&S.phase==='lobby'){clearTimeout(stakeTimer);stakeWait=null;
+    if(d.ok){const sel=S.stakeSel;startGame(S);S.stake=sel;S.stakeGid=d.gid;S.stakePot=d.pot;stakePaid=null;lastSeq=S.seq;publish();loadMe();render();}
+    else{const who=(d.who||[]).map(id=>{const p=S.players.find(q=>(q.id==='@host'?myPeer:q.id)===id);return p?p.name:'';}).filter(Boolean).join(', ');
+      stakeErr=d.err==='login'?`${who||'누군가'}님이 로그인하지 않았어요`:d.err==='short'?`${who||'누군가'}님의 토큰이 부족해요`:'판돈을 걷지 못했어요';render();}}
+  if(d.t==='stakepaid'&&S&&d.gid===S.stakeGid){stakePaid=d;if(d.refunded)notice('판돈을 모두 돌려받았어요');else if(d.winner===myPeer)notice(`🪙 판돈 ${Number(d.pot).toLocaleString()} 획득!`);loadMe();render();}}
+async function openGift(){giftMsg='';giftData=null;openSheet('gift');try{giftData=await api('/api/friends');}catch(e){giftData={friends:[],sentToday:0};}renderSheet();}
+function giftHTML(){const h=`<div class="head"><h3>토큰 선물</h3><button class="ghost" data-act="close">닫기</button></div>`;if(!giftData)return h+'<div class="panel">불러오는 중…</div>';
+  const left=Math.max(0,300-(giftData.sentToday||0)),fr=giftData.friends||[];
+  return h+`<div class="panel"><p class="note">같이 판돈 게임을 한 친구에게만 보낼 수 있어요. 하루에 보내기 🪙300 · 받기 🪙500까지예요.</p><p class="note">내 토큰 🪙${acct.me?acct.me.tokens.toLocaleString():0} · 오늘 더 보낼 수 있는 양 🪙${left}</p>${giftMsg?`<p class="gmsg">${esc(giftMsg)}</p>`:''}</div>`
+    +(fr.length?fr.map(f=>`<div class="panel grow"><span class="gname">${esc(f.nickname)}</span><span class="gbtns">${[50,100,300].map(a=>`<button class="ghost sm" data-act="giftsend" data-to="${f.id}" data-v="${a}" ${a>left?'disabled':''}>🪙${a}</button>`).join('')}</span></div>`).join(''):'<div class="panel"><p class="note">아직 같이 판돈 게임을 한 친구가 없어요</p></div>');}
+async function giftSend(to,amt){giftMsg='보내는 중…';renderSheet();let r={};try{r=await api('/api/gift',{to,amount:amt});}catch(e){}
+  giftMsg=r.ok?`🪙${amt} 보냈어요!`:({sendlimit:`오늘은 🪙${r.left}까지만 더 보낼 수 있어요`,recvlimit:`그 친구는 오늘 🪙${r.left}까지만 더 받을 수 있어요`,short:'토큰이 부족해요',friend:'같이 판돈 게임을 한 친구에게만 보낼 수 있어요'})[r.err]||'보내지 못했어요';
+  if(r.ok){giftData.sentToday=r.sentToday;await loadMe();}renderSheet();}
+
 function makeWsRoom(){
   let pid=null;try{pid=sessionStorage.getItem('nm-peer')}catch(e){}
   if(!pid||!/^[a-z0-9]{8,32}$/.test(pid)){pid=(Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/g,'').slice(0,20);try{sessionStorage.setItem('nm-peer',pid)}catch(e){}}
-  let ws=null,ch=null,mine={},conn=false,retry=0,rt=null,last=[];const pcb=[],ccb=[];
+  let ws=null,ch=null,mine={},conn=false,retry=0,rt=null,last=[],authTok=null;const pcb=[],ccb=[],mcb=[];
   const setConn=c=>{if(c!==conn){conn=c;ccb.forEach(f=>f(c));}};
-  const emit=()=>{const others=last.filter(p=>p.peer!==pid);const peers=others.map(p=>({peer:p.peer,presence:p.presence||{},away:!!p.away,sameTab:false,isMe:false,by:null,kind:'viewer',guest:false}));
-    peers.push({peer:pid,presence:Object.assign({},mine),away:false,sameTab:true,isMe:true,by:null,kind:'viewer',guest:false});pcb.forEach(f=>f({peers}));};
+  const emit=()=>{const others=last.filter(p=>p.peer!==pid);const peers=others.map(p=>({peer:p.peer,presence:p.presence||{},away:!!p.away,li:!!p.li,sameTab:false,isMe:false,by:null,kind:'viewer',guest:false}));
+    const meL=last.find(p=>p.peer===pid);peers.push({peer:pid,presence:Object.assign({},mine),away:false,li:!!(meL&&meL.li),sameTab:true,isMe:true,by:null,kind:'viewer',guest:false});pcb.forEach(f=>f({peers}));};
   let emitT=null;const emitSoon=()=>{if(emitT)return;emitT=setTimeout(()=>{emitT=null;emit();},0);};
   function connect(){if(!ch)return;clearTimeout(rt);const w=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws?ch='+ch+'&peer='+pid);ws=w;
-    w.onopen=()=>{if(w!==ws)return;retry=0;setConn(true);w.send(JSON.stringify({t:'p',d:mine}));};
-    w.onmessage=e=>{if(w!==ws)return;let d;try{d=JSON.parse(e.data)}catch(x){return}if(d&&d.t==='peers'&&Array.isArray(d.peers)){last=d.peers;emitSoon();}};
+    w.onopen=()=>{if(w!==ws)return;retry=0;setConn(true);w.send(JSON.stringify({t:'p',d:mine}));if(authTok)w.send(JSON.stringify({t:'auth',token:authTok}));};
+    w.onmessage=e=>{if(w!==ws)return;let d;try{d=JSON.parse(e.data)}catch(x){return}if(d&&d.t==='peers'&&Array.isArray(d.peers)){last=d.peers;emitSoon();}else if(d&&d.t)mcb.forEach(f=>f(d));};
     w.onclose=()=>{if(w!==ws)return;ws=null;setConn(false);if(ch)rt=setTimeout(connect,Math.min(6000,400*Math.pow(2,retry++)));};
     w.onerror=()=>{try{w.close()}catch(x){}};}
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ch&&(!ws||ws.readyState>1)){retry=0;connect();}});
@@ -1119,6 +1185,9 @@ function makeWsRoom(){
     onPeers(fn){pcb.push(fn);emitSoon();return()=>{};},
     onConnection(fn){ccb.push(fn);setTimeout(()=>fn(conn),0);return()=>{};},
     connected:()=>conn,
+    setAuth(t){authTok=t||null;if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'auth',token:authTok||''}));},
+    send(o){if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true;}return false;},
+    onMsg(f){mcb.push(f);},
     switchTo(c){if(c===ch)return;ch=c;mine={};last=[];const o=ws;ws=null;if(o){try{o.close()}catch(e){}}setConn(false);clearTimeout(rt);if(ch)connect();emitSoon();}};}
 function saveSess(){try{
   if(mode==='local'&&S){sessionStorage.setItem('nm-local',JSON.stringify(S));}else if(mode!=='local')sessionStorage.removeItem('nm-local');}catch(e){}
@@ -1219,7 +1288,12 @@ document.addEventListener('click',e=>{
   case 'pick':{const k=+b.dataset.ch;myCh=k;save('nm-ch',String(k));
     if(mode==='host'&&S&&S.phase==='lobby'){if(!S.players.some(p=>p.id!=='@host'&&p.ch===k)){S.players[0].ch=k;publish();render();}}
     else if(mode==='guest'&&room){room.presence({ch:k}).catch(()=>{});}break;}
-  case 'start':if(mode==='host'&&S.players.length>=2){startGame(S);lastSeq=S.seq;publish();render();}break;
+  case 'start':if(mode==='host'&&S.players.length>=2&&!stakeWait){if(S.stakeSel>0&&NET==='ws'){startWithStake();break;}startGame(S);lastSeq=S.seq;publish();render();}break;
+  case 'stake':if(mode==='host'&&S&&S.phase==='lobby'){S.stakeSel=+b.dataset.v||0;stakeErr='';publish();render();}break;
+  case 'login':if(acct.sb)acct.sb.auth.signInWithOAuth({provider:b.dataset.v,options:{redirectTo:location.origin+'/'}});break;
+  case 'logout':if(acct.sb){acct.sb.auth.signOut().catch(()=>{});setSession(null);}break;
+  case 'gift':openGift();break;
+  case 'giftsend':giftSend(b.dataset.to,+b.dataset.v);break;
   case 'again':if(!S||S.phase!=='over')break;if(mode==='local'){const keep=S.players.map(p=>({id:p.id,name:p.name,ch:p.c}));S.players=keep;startGame(S);}
     else if(mode==='host'){const keep=S.players.map(p=>({id:p.id,name:p.name,ch:p.c}));const hi=keep.findIndex(p=>p.id==='@host');if(hi>0)keep.unshift(keep.splice(hi,1)[0]);S=newGame(S.code);S.players=keep;hostTick();}
     for(const k in view)delete view[k];lastSeq=S.seq;publish();render();break;
@@ -1263,11 +1337,11 @@ window.addEventListener('resize',applyOrient);
 
 if(restoreLocal()){setTimeout(render,0);}
 /* local test hook (localhost / file only; never on the public site) */
-if(/^(localhost|127\.0\.0\.1|)$/.test(location.hostname))window.__nm={get S(){return S},set S(v){S=v},apply:(a)=>apply(S,a),publish:()=>publish(),render:()=>render()};
+if(/^(localhost|127\.0\.0\.1|)$/.test(location.hostname))window.__nm={get S(){return S},set S(v){S=v},apply:(a)=>apply(S,a),publish:()=>publish(),render:()=>render(),fakeLogin:(t)=>{acct.on=true;setSession({access_token:t});},acct:()=>acct};
 /* ---------- boot ---------- */
 render();
 if(NET==='ws'){
-  room=makeWsRoom();myPeer=room.id;roomState='ok';
+  room=makeWsRoom();myPeer=room.id;roomState='ok';room.onMsg(onRoomMsg);acctInit();
   room.onConnection(c=>{connected=c;if(c){connAt=Date.now();for(const k in goneAt)delete goneAt[k];}render();});
   room.onPeers(onPeers);
   if(!restoreSess())render();
