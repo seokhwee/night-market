@@ -38,6 +38,8 @@ create table if not exists public.stakes (            -- 판돈 게임 한 판
   settled_at timestamptz
 );
 
+alter table public.profiles add column if not exists nick_set boolean not null default false;  -- 가입 때 닉네임을 직접 정했는지
+
 alter table public.profiles    enable row level security;
 alter table public.ledger      enable row level security;
 alter table public.played_with enable row level security;
@@ -79,7 +81,7 @@ begin
     update public.profiles set tokens = tokens + 300, last_rescue = today where id = uid returning * into p;
     insert into public.ledger(user_id, delta, reason) values (uid, 300, 'rescue'); res := 300;
   end if;
-  return json_build_object('id', p.id, 'nickname', p.nickname, 'tokens', p.tokens, 'daily', gave, 'rescue', res);
+  return json_build_object('id', p.id, 'nickname', p.nickname, 'nickSet', p.nick_set, 'tokens', p.tokens, 'daily', gave, 'rescue', res);
 end $$;
 
 -- ── 판돈 걷기: 모두 낼 수 있을 때만 한꺼번에 ─────────────
@@ -172,8 +174,8 @@ $$;
 -- ── 닉네임 바꾸기 ─────────────────────────────────────
 create or replace function public.nm_nick(uid uuid, p_nick text) returns json
 language sql security definer set search_path = public as $$
-  update public.profiles set nickname = left(coalesce(nullif(trim(p_nick), ''), nickname), 8) where id = uid
-  returning json_build_object('nickname', nickname);
+  update public.profiles set nickname = left(coalesce(nullif(trim(p_nick), ''), nickname), 8), nick_set = true where id = uid
+  returning json_build_object('nickname', nickname, 'nickSet', nick_set);
 $$;
 
 -- ── 함수는 게임 서버(service_role)만 부를 수 있게 ───────────
