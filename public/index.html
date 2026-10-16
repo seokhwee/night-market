@@ -380,6 +380,7 @@ input.f:focus{outline:none;border-color:var(--lantern)}
 .lchips{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}.lchip{font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.08)}.lchip.off{color:#ffb4a8;background:rgba(255,90,90,.12)}
 .note.err{color:#ffb4a8}.stakeres{font-weight:800;color:#ffd84d;margin:0}
 .panel.grow{display:flex;justify-content:space-between;align-items:center;gap:8px}.gbtns{display:flex;gap:6px}.gmsg{font-weight:700;color:#ffd84d;margin:6px 0 0}
+.btn.resumeb{background:linear-gradient(180deg,#8fd0ff,#4aa3e8);color:#06223a}
 .lapnote{flex-basis:100%;text-align:center}
 .lapb{font-style:normal;font-size:.78em;margin-left:4px;padding:0 5px;border-radius:6px;background:rgba(255,255,255,.12);color:#ffd9a8;white-space:nowrap}
 .turnline{display:flex;align-items:center;gap:10px;font-size:clamp(14px,2.6cqmin,22px);flex-wrap:wrap;justify-content:center}
@@ -945,6 +946,8 @@ function renderTokens(){
   tiles.forEach((el,i)=>{const h=by[i].map(p=>`<span class="tok${mode!=='local'&&p.id===me?' me':''}${view[p.id]!=null&&view[p.id]!==p.pos?' hop':''}" style="--c:${PC[p.c]}" title="${esc(p.name)}">${CH[p.c].svg}</span>`).join('');
     if(el.lastChild.dataset.h!==h){el.lastChild.innerHTML=h;el.lastChild.dataset.h=h;}});}
 let stepper=null;
+/* 연출 요소 지우기: 끝난 애니메이션까지 정리해야 메모리에 안 남아요 (fill:'both'는 브라우저가 계속 붙잡고 있음) */
+function drop(el){if(!el)return;try{el.getAnimations({subtree:true}).forEach(a=>{a.onfinish=null;a.oncancel=null;a.cancel();});}catch(e){}el.remove();}
 const DICE_MS=1300,CARD_MS=1700,CUFF_MS=1500;
 const TRAV_MS=1400;let travSel=null,travSeen=0,travPend=null,tpSeen=0,tpPend=null;
 let fxUntil=0,fxT=null,fxGid=null,diceSeen=null,cardSeen=0,jailSeen=0,jailPend=null,diceLand=0,cardAt=0,hideTok=null;
@@ -980,7 +983,7 @@ function throwDice(a,b){
     pos.querySelector('.dsh').animate(L.map(([y,sc,o])=>Object.assign({transform:`scale(${1/sc})`,opacity:1+y/300},o!=null?{offset:o}:{})),{duration:D,fill:'both',easing:'ease-in-out'});
     const [fx,fy]=FACE_ROT[v],z=Math.round(Math.random()*30-15),dx=(Math.random()<.5?-1:1)*720,dy=(Math.random()<.5?-1:1)*540;
     pos.querySelector('.cube').animate([{transform:`rotateZ(${z+200}deg) rotateX(${fx+dx}deg) rotateY(${fy+dy}deg)`},{transform:`rotateZ(${z}deg) rotateX(${fx}deg) rotateY(${fy}deg)`}],{duration:D*.86,easing:'cubic-bezier(.2,.7,.3,1)',fill:'both'});});
-  setTimeout(()=>lay.classList.add('out'),DICE_MS+380);setTimeout(()=>lay.remove(),DICE_MS+800);}
+  setTimeout(()=>lay.classList.add('out'),DICE_MS+380);setTimeout(()=>drop(lay),DICE_MS+800);}
 const CUFF_SVG='<svg viewBox="0 0 100 72" aria-hidden="true"><defs><linearGradient id="cm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f7fb"/><stop offset=".5" stop-color="#b9c3d2"/><stop offset="1" stop-color="#7d889a"/></linearGradient></defs>'+
   '<path d="M40 22 q10 -10 20 0" fill="none" stroke="#9aa5b6" stroke-width="3.2"/><ellipse cx="44" cy="19" rx="4.2" ry="3" fill="none" stroke="#dfe5ee" stroke-width="2.4"/><ellipse cx="50" cy="16" rx="4.2" ry="3" fill="none" stroke="#c6cfdc" stroke-width="2.4"/><ellipse cx="56" cy="19" rx="4.2" ry="3" fill="none" stroke="#dfe5ee" stroke-width="2.4"/>'+
   '<g class="cl"><circle cx="24" cy="44" r="18" fill="none" stroke="url(#cm)" stroke-width="7.5"/><circle cx="24" cy="44" r="18" fill="none" stroke="#4a5364" stroke-width="1" opacity=".6"/><rect x="31" y="20" width="12" height="9" rx="2" fill="url(#cm)" stroke="#4a5364" stroke-width="1"/></g>'+
@@ -999,7 +1002,7 @@ function cuffFx(from,to){const a=tiles[from]&&tiles[from].getBoundingClientRect(
   w.querySelector('.ctag').animate([{opacity:0,transform:'translateX(-50%) scale(.4)'},{opacity:0,offset:.22},{opacity:1,transform:'translateX(-50%) scale(1.15)',offset:.3},{opacity:1,transform:'translateX(-50%) scale(1)',offset:.45},{opacity:0,offset:.55},{opacity:0}],{duration:CUFF_MS,fill:'both'});
   w.querySelector('.siren').animate([{opacity:0},{opacity:1,offset:.25},{opacity:1,offset:.5},{opacity:0,offset:.6},{opacity:0}],{duration:CUFF_MS,fill:'both'});
   setTimeout(()=>{hideTok=jailPend&&jailPend.id;renderTokens();},CUFF_MS*.52);
-  setTimeout(()=>w.remove(),CUFF_MS+50);}
+  setTimeout(()=>drop(w),CUFF_MS+50);}
 const PLANE_SVG='<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="15" cy="48" r="8" fill="#2a2233" stroke="#fff" stroke-width="2"/><circle cx="49" cy="48" r="8" fill="#2a2233" stroke="#fff" stroke-width="2"/><circle cx="15" cy="48" r="3" fill="#bbb"/><circle cx="49" cy="48" r="3" fill="#bbb"/><path d="M10 44q2-12 16-12h12l4 10h8q4 0 4 4H38l-4-6H24q-6 0-8 6z" fill="#ff8a3d" stroke="#7a3a12" stroke-width="1.6" stroke-linejoin="round"/><path d="M42 42l-4-24h6" stroke="#2a2233" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="6" y="20" width="18" height="14" rx="2" fill="#ff5d8f" stroke="#8e1a3a" stroke-width="1.6"/><path d="M10 27h10" stroke="#fff" stroke-width="2"/></svg>';
 function planeFx(from,to,p){const a=tiles[from].getBoundingClientRect(),b=tiles[to].getBoundingClientRect(),br=board.getBoundingClientRect();if(!a.width)return;
   const sz=Math.round(Math.max(48,Math.min(120,Math.min(br.width,br.height)*.13)));
@@ -1010,7 +1013,7 @@ function planeFx(from,to,p){const a=tiles[from].getBoundingClientRect(),b=tiles[
   w.innerHTML=`<div class="pl">${PLANE_SVG}</div><div class="rider">${tokHTML(p,'lg')}</div>`;document.body.appendChild(w);
   w.animate([{transform:`translate(${ax}px,${ay}px) scale(.5)`,opacity:0},{transform:`translate(${ax}px,${ay}px) scale(.8)`,opacity:1,offset:.12},{transform:`translate(${mx}px,${my}px) scale(1.25)`,offset:.5},{transform:`translate(${bx}px,${by}px) scale(.8)`,opacity:1,offset:.9},{transform:`translate(${bx}px,${by}px) scale(.5)`,opacity:0}],{duration:TRAV_MS,easing:'ease-in-out',fill:'both'});
   const dir=bx<ax?-1:1;w.querySelector('.pl').animate([{transform:`scaleX(${dir}) rotate(0)`},{transform:`scaleX(${dir}) rotate(-8deg)`,offset:.3},{transform:`scaleX(${dir}) rotate(4deg)`,offset:.6},{transform:`scaleX(${dir}) rotate(0)`}],{duration:TRAV_MS,fill:'both'});
-  hideTok=p.id;renderTokens();setTimeout(()=>w.remove(),TRAV_MS+50);}
+  hideTok=p.id;renderTokens();setTimeout(()=>drop(w),TRAV_MS+50);}
 function animateTokens(){
   if(!inGame()){for(const k in view)delete view[k];return;}
   S.players.forEach(p=>{if(view[p.id]==null)view[p.id]=p.pos;});
@@ -1075,11 +1078,13 @@ function renderCenter(){
         ${logged?'':`<input class="f" id="nick" maxlength="8" placeholder="내 닉네임" autocomplete="off" value="${esc(myName)}">`}
         <div id="online" class="stack"></div>
         <button class="ghost" data-act="local">한 기기에서 번갈아 하기</button>
+        <div id="resume"></div>
         <div id="acct"></div>
         <div id="inst"></div>
       </div>
 `);
     const ie=document.getElementById('inst');if(ie)ie.innerHTML=installHTML();
+    const rz=document.getElementById('resume');if(rz){const o=resumeOffer();const h=o?`<button class="btn resumeb" data-act="resume">🔄 하던 게임으로 돌아가기 · 방 ${o.code}</button>`:'';if(rz.innerHTML!==h)rz.innerHTML=h;}
     const ac=document.getElementById('acct');if(ac&&ac.innerHTML!==acctHTML())ac.innerHTML=acctHTML();
     const on=document.getElementById('online');
     if(roomState==='none'){on.innerHTML=`<p class="note">이 화면에서는 온라인 방을 열 수 없어요. 한 기기에서 번갈아 하기는 가능해요.</p>`;return;}
@@ -1351,7 +1356,7 @@ function burst(j,L){const el=tiles[j];if(!el)return;const r=el.getBoundingClient
     const an=d.animate([{transform:`translate(${cx}px,${cy}px) translate(-50%,-50%) scale(.3)`,opacity:1},
       {transform:`translate(${cx+Math.cos(ang)*dist}px,${cy+Math.sin(ang)*dist}px) translate(-50%,-50%) scale(1)`,opacity:1,offset:.6},
       {transform:`translate(${cx+Math.cos(ang)*dist*1.2}px,${cy+Math.sin(ang)*dist*1.2+14}px) translate(-50%,-50%) scale(.4)`,opacity:0}],{duration:900+Math.random()*300,easing:'cubic-bezier(.2,.8,.3,1)',fill:'both'});
-    an.onfinish=()=>d.remove();}
+    an.onfinish=()=>drop(d);}
   el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
 function lighten(h){const n=parseInt(h.slice(1),16);const f=c=>Math.min(255,Math.round(c+(255-c)*.45));return `rgb(${f(n>>16)},${f((n>>8)&255)},${f(n&255)})`;}
 function banner(p,t,s,c){bq.push({p,t,s,c});if(!bBusy)nextBanner();}
@@ -1419,7 +1424,7 @@ function flyMoney(t,delay){
       {transform:`translate(${end.x+jx}px,${end.y+jy}px) translate(-50%,-50%) scale(.8)`,opacity:1,offset:.88},
       {transform:`translate(${end.x}px,${end.y}px) translate(-50%,-50%) scale(.3)`,opacity:0}];
     const a=b.animate(kf,{duration:dur,delay:delay+k*90,easing:'cubic-bezier(.35,.1,.3,1)',fill:'both'});
-    a.onfinish=()=>b.remove();a.oncancel=()=>b.remove();}
+    a.onfinish=()=>drop(b);a.oncancel=()=>b.remove();}
   if(from&&to&&t.t===-2)setTimeout(()=>{tiles[20].classList.remove('potin');void tiles[20].offsetWidth;tiles[20].classList.add('potin');},delay+dur*.85);
   if(from&&to)setTimeout(()=>{const el=center.querySelector(`[data-pid="${t.t}"]`);if(el){el.classList.remove('gain');void el.offsetWidth;el.classList.add('gain');}},delay+dur*.85);
   if(from){const el=center.querySelector(`[data-pid="${t.f}"]`);if(el){el.classList.remove('lose');void el.offsetWidth;el.classList.add('lose');}}}
@@ -1522,16 +1527,27 @@ function makeWsRoom(){
     onPeers(fn){pcb.push(fn);emitSoon();return()=>{};},
     onConnection(fn){ccb.push(fn);setTimeout(()=>fn(conn),0);return()=>{};},
     connected:()=>conn,
+    setPid(id){if(ch||!/^[a-z0-9]{8,32}$/.test(id||''))return;pid=id;this.id=id;},
     setAuth(t){authTok=t||null;if(ws&&ws.readyState===1)ws.send(JSON.stringify({t:'auth',token:authTok||''}));},
     send(o){if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true;}return false;},
     onMsg(f){mcb.push(f);},
     switchTo(c){if(c===ch)return;ch=c;mine={};last=[];const o=ws;ws=null;if(o){try{o.close()}catch(e){}}setConn(false);clearTimeout(rt);if(ch)connect();emitSoon();}};}
+setInterval(()=>{if(mode==='host'||mode==='guest')saveSess();},3000);
 function saveSess(){try{
   if(mode==='local'&&S){sessionStorage.setItem('nm-local',JSON.stringify(S));}else if(mode!=='local')sessionStorage.removeItem('nm-local');}catch(e){}
   if(NET!=='ws')return;try{
   if(mode==='host'&&S)sessionStorage.setItem('nm-sess',JSON.stringify({mode:'host',S,lastReq}));
   else if(mode==='guest'&&joinCode)sessionStorage.setItem('nm-sess',JSON.stringify({mode:'guest',code:joinCode,reqN}));
-  else sessionStorage.removeItem('nm-sess');}catch(e){}}
+  else sessionStorage.removeItem('nm-sess');}catch(e){}
+  /* 탭이 닫혀도 돌아올 수 있게: 진행 중인 온라인 게임은 기기에도 저장 (3시간) */
+  try{const playing=S&&(mode==='host'||mode==='guest')&&(S.phase==='play'||S.phase==='lobby');
+    if(playing&&room&&room.id){const r=mode==='host'?{mode:'host',S,lastReq}:{mode:'guest',code:joinCode,reqN};r.peer=room.id;r.at=Date.now();r.name=myName;localStorage.setItem('nm-resume',JSON.stringify(r));}
+    else if(S&&S.phase==='over'&&(mode==='host'||mode==='guest'))localStorage.removeItem('nm-resume');}catch(e){}}
+function resumeOffer(){if(NET!=='ws'||mode!=='menu')return null;let r=null;try{r=JSON.parse(localStorage.getItem('nm-resume')||'null');}catch(e){}
+  if(!r||!r.peer||Date.now()-(r.at||0)>3*3600e3)return null;const code=r.mode==='host'?r.S&&r.S.code:r.code;return /^\d{4}$/.test(code||'')?{r,code}:null;}
+function resumeGame(){const o=resumeOffer();if(!o)return;const r=o.r;
+  try{sessionStorage.setItem('nm-peer',r.peer);sessionStorage.setItem('nm-sess',JSON.stringify(r));}catch(e){}
+  if(r.name)myName=r.name;room.setPid(r.peer);myPeer=r.peer;if(!restoreSess())render();else render();}
 function restoreLocal(){let L=null;try{L=JSON.parse(sessionStorage.getItem('nm-local')||'null')}catch(e){}
   if(!L||!L.players||!L.players.length)return false;S=L;mode='local';lastSeq=S.seq;if(S.gid)ordShown=S.gid;return true;}
 function restoreSess(){let s=null;try{s=JSON.parse(sessionStorage.getItem('nm-sess')||'null')}catch(e){}if(!s)return false;
@@ -1569,7 +1585,7 @@ function hostTick(){if(mode!=='host'||!S)return;let changed=false;
   if(changed)publish();}
 setInterval(()=>{if(mode!=='host'||!S||S.phase!=='play')return;const now=Date.now();let ch=false;
   if(NET==='ws'&&(!connected||now-connAt<60000))return; /* 서버 재시작 직후엔 다른 사람들이 돌아올 시간을 줌 */
-  S.players.forEach((p,i)=>{if(goneAt[p.id]&&now-goneAt[p.id]>25000&&!p.out){forfeit(S,i);delete goneAt[p.id];ch=true;}});
+  S.players.forEach((p,i)=>{if(goneAt[p.id]&&now-goneAt[p.id]>180000&&!p.out){forfeit(S,i);delete goneAt[p.id];ch=true;}});
   if(ch){publish();render();}},3000);
 
 function onPeers(ch){peers=ch.peers;const me=peers.find(p=>p.sameTab);if(me)myPeer=me.peer;
@@ -1592,7 +1608,7 @@ function joinRoom(code){code=String(code||'').replace(/\D/g,'').slice(0,4);if(co
   if(!nickOk())return;joinCode=code;mode='guest';S=null;seenHost=false;hostGone=false;hostMissAt=0;hostPeer=null;pending=null;
   if(NET==='ws')room.switchTo(code);saveSess();
   room.presence({join:code,name:myName,ch:myCh,req:null,host:null,code:null,state:null}).catch(()=>{});render();}
-function leave(){if(room&&online())room.presence({host:null,code:null,state:null,join:null,req:null,name:null,react:null,bye:mode==='host'&&S?S.code:null}).catch(()=>{});
+function leave(){try{localStorage.removeItem('nm-resume');}catch(e){}if(room&&online())room.presence({host:null,code:null,state:null,join:null,req:null,name:null,react:null,bye:mode==='host'&&S?S.code:null}).catch(()=>{});
   mode='menu';S=null;joinCode=null;pending=null;confirmEnd=false;lastSeq=null;closeSheet();for(const k in view)delete view[k];
   if(NET==='ws'&&room){room.switchTo(null);}saveSess();render();}
 
@@ -1632,6 +1648,7 @@ document.addEventListener('click',e=>{
   case 'login':if(acct.sb)acct.sb.auth.signInWithOAuth({provider:b.dataset.v,options:{redirectTo:location.origin+'/'}});break;
   case 'logout':if(acct.sb){acct.sb.auth.signOut().catch(()=>{});setSession(null);}break;
   case 'gift':openGift();break;
+  case 'resume':resumeGame();break;
   case 'nicksave':nickSave();break;
   case 'nickedit':if(acct.me){nickDraft=acct.me.nickname;nickMsg='';openSheet('nick');}break;
   case 'giftsend':giftSend(b.dataset.to,+b.dataset.v);break;
